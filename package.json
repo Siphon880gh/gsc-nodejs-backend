@@ -1,0 +1,51 @@
+{
+  "name": "search-console-cli",
+  "version": "1.0.0",
+  "description": "Cross-source analytics CLI with Google Search Console, GA4 and BigQuery support",
+  "type": "module",
+  "main": "src/cli/index.js",
+  "bin": {
+    "analytics-cli": "src/cli/index.js"
+  },
+  "scripts": {
+    "start": "node src/cli/index.js",
+    "dev": "node --watch src/cli/index.js",
+    "test": "vitest run",
+    "test:setup": "node test-setup.js",
+    "lint": "eslint .",
+    "format": "prettier -w .",
+    "typecheck": "tsc --noEmit"
+  },
+  "keywords": [
+    "analytics",
+    "search-console",
+    "gsc",
+    "ga4",
+    "bigquery",
+    "cli",
+    "inquirer"
+  ],
+  "author": "",
+  "license": "MIT",
+  "dependencies": {
+    "@google-analytics/data": "^5.2.0",
+    "@google-cloud/bigquery": "^7.5.0",
+    "@googleapis/searchconsole": "^3.0.0",
+    "chalk": "^5.3.0",
+    "commander": "^11.1.0",
+    "csv-stringify": "^6.4.4",
+    "dotenv": "^16.3.1",
+    "inquirer": "^9.3.8",
+    "ora": "^7.0.1"
+  },
+  "devDependencies": {
+    "@types/node": "^20.10.0",
+    "eslint": "^9.0.0",
+    "prettier": "^3.1.0",
+    "typescript": "^5.3.0",
+    "vitest": "^3.2.4"
+  },
+  "engines": {
+    "node": ">=18.0.0"
+  }
+}
