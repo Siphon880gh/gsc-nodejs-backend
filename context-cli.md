@@ -6,7 +6,7 @@ Interactive command-line interface built with Inquirer.js providing menu-driven 
 
 ## Menu System
 
-### Main Menu (`src/cli/prompts.js:15-43`)
+### Main Menu (`src/cli/prompts.js:16-28`)
 
 ```javascript
 const base = [
@@ -18,6 +18,8 @@ const base = [
       { name: "Run a query", value: "query" },
       { name: "Authenticate with Google", value: "auth" },
       { name: "List available sites", value: "sites" },
+      { name: "Select/Change site", value: "select_site" },
+      { name: "Exit", value: "exit" },
     ],
   }
 ];
@@ -90,9 +92,56 @@ export async function buildAdhocPrompts(cfg, source) {
 }
 ```
 
+## Site Selection
+
+### Site Selection Handler (`src/cli/index.js:81-103`)
+
+```javascript
+async function handleSiteSelection(cfg) {
+  const spinner = ora("Fetching available sites...").start();
+  try {
+    // Fetch sites first
+    const verifiedSites = await getVerifiedSites(cfg);
+    spinner.succeed(`Found ${verifiedSites.length} verified sites`);
+    
+    // Build prompts with the fetched sites
+    const answers = await inquirer.prompt(buildSiteSelectionPrompts(verifiedSites));
+    
+    const success = saveSelectedSite(answers.selectedSite);
+    if (success) {
+      console.log(chalk.green(`Selected site: ${answers.selectedSite}`));
+      console.log(chalk.blue("This site will be used for all queries until you change it."));
+    }
+  } catch (error) {
+    spinner.fail("Site selection failed");
+    console.error(chalk.red(error.message));
+  }
+}
+```
+
+### Site Selection Prompts (`src/cli/prompts.js:50-72`)
+
+```javascript
+export function buildSiteSelectionPrompts(verifiedSites) {
+  return [
+    {
+      type: "list",
+      name: "selectedSite",
+      message: "Select a Google Search Console property",
+      choices: verifiedSites.map(site => ({
+        name: `${site.siteUrl} (${site.permissionLevel})`,
+        value: site.siteUrl,
+        short: site.siteUrl
+      })),
+      default: currentSite ? verifiedSites.findIndex(site => site.siteUrl === currentSite) : 0,
+    }
+  ];
+}
+```
+
 ## Action Handlers
 
-### Authentication Handler (`src/cli/index.js:21-45`)
+### Authentication Handler (`src/cli/index.js:40-64`)
 
 ```javascript
 async function handleAuthentication(cfg) {
@@ -279,31 +328,59 @@ const enabledSources = Object.entries(cfg.sources)
 
 ## CLI Entry Point
 
-### Main Function (`src/cli/index.js:64-121`)
+### Main Function (`src/cli/index.js:105-194`)
 
 ```javascript
 async function main() {
   try {
     const cfg = loadConfig();
-    const initialAnswers = await inquirer.prompt(await buildPrompts(cfg));
     
-    // Handle different actions
-    if (initialAnswers.action === "auth") {
-      await handleAuthentication(cfg);
-      return;
-    } else if (initialAnswers.action === "sites") {
-      await handleListSites(cfg);
-      return;
+    // Main CLI loop
+    while (true) {
+      try {
+        const initialAnswers = await inquirer.prompt(await buildPrompts(cfg));
+        
+        // Handle different actions
+        if (initialAnswers.action === "auth") {
+          await handleAuthentication(cfg);
+          await waitForEnter();
+          continue;
+        } else if (initialAnswers.action === "sites") {
+          await handleListSites(cfg);
+          await waitForEnter();
+          continue;
+        } else if (initialAnswers.action === "select_site") {
+          await handleSiteSelection(cfg);
+          await waitForEnter();
+          continue;
+        } else if (initialAnswers.action === "exit") {
+          console.log(chalk.blue("Goodbye! 👋"));
+          break;
+        }
+        
+        // Query execution flow
+        // ... rest of query logic
+        await waitForEnter();
+      } catch (e) {
+        console.error(chalk.red(`Error: ${e.message}`));
+        await waitForEnter();
+      }
     }
-    
-    // Query execution flow
-    const additionalAnswers = await inquirer.prompt(/* ... */);
-    const answers = { ...initialAnswers, ...additionalAnswers };
-    
-    const rows = await runQuery(answers, cfg);
-    await renderOutput(rows, answers, cfg);
   } catch (e) {
     console.error(chalk.red(`Configuration error: ${e.message}`));
   }
+}
+```
+
+### Wait for Enter Helper (`src/cli/index.js:22-30`)
+
+```javascript
+async function waitForEnter() {
+  await inquirer.prompt([{
+    type: 'input',
+    name: 'continue',
+    message: 'Press Enter to continue...',
+    validate: () => true
+  }]);
 }
 ```

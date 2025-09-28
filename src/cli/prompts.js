@@ -1,4 +1,5 @@
 import chalk from "chalk";
+import { getSelectedSite, getVerifiedSites, hasValidSiteSelection } from "../utils/site-manager.js";
 
 export async function buildPrompts(cfg) {
   const enabledSources = Object.entries(cfg.sources)
@@ -21,6 +22,8 @@ export async function buildPrompts(cfg) {
         { name: "Run a query", value: "query" },
         { name: "Authenticate with Google", value: "auth" },
         { name: "List available sites", value: "sites" },
+        { name: "Select/Change site", value: "select_site" },
+        { name: "Exit", value: "exit" },
       ],
     },
     {
@@ -43,6 +46,28 @@ export async function buildPrompts(cfg) {
   ];
 
   return base;
+}
+
+export function buildSiteSelectionPrompts(verifiedSites) {
+  if (verifiedSites.length === 0) {
+    throw new Error("No verified Google Search Console properties found. Make sure you have access to GSC properties.");
+  }
+
+  const currentSite = getSelectedSite();
+  
+  return [
+    {
+      type: "list",
+      name: "selectedSite",
+      message: "Select a Google Search Console property",
+      choices: verifiedSites.map(site => ({
+        name: `${site.siteUrl} (${site.permissionLevel})`,
+        value: site.siteUrl,
+        short: site.siteUrl
+      })),
+      default: currentSite ? verifiedSites.findIndex(site => site.siteUrl === currentSite) : 0,
+    }
+  ];
 }
 
 export async function buildPresetPrompts(cfg, source) {

@@ -13,10 +13,21 @@ import inquirer from "inquirer";
 import ora from "ora";
 import chalk from "chalk";
 import { loadConfig } from "../utils/config.js";
-import { buildPrompts, buildPresetPrompts, buildAdhocPrompts } from "./prompts.js";
+import { buildPrompts, buildPresetPrompts, buildAdhocPrompts, buildSiteSelectionPrompts } from "./prompts.js";
 import { runQuery } from "../core/query-runner.js";
 import { renderOutput } from "./renderers.js";
 import { getOAuth2Client, getAvailableSites } from "../datasources/searchconsole.js";
+import { saveSelectedSite, getSelectedSite, hasValidSiteSelection, clearSelectedSite, getVerifiedSites } from "../utils/site-manager.js";
+
+// Helper function to wait for user to continue
+async function waitForEnter() {
+  await inquirer.prompt([{
+    type: 'input',
+    name: 'continue',
+    message: 'Press Enter to continue...',
+    validate: () => true
+  }]);
+}
 
 async function handleAuthentication(cfg) {
   const spinner = ora("Authenticating with Google...").start();
@@ -63,11 +74,39 @@ async function handleListSites(cfg) {
         console.log("");
       });
       
-      console.log(chalk.blue("To use a property, set the GSC_SITE_URL environment variable:"));
-      console.log(chalk.green(`export GSC_SITE_URL="${sites[0].siteUrl}"`));
+      const currentSite = getSelectedSite();
+      if (currentSite) {
+        console.log(chalk.green(`Currently selected: ${currentSite}`));
+      } else {
+        console.log(chalk.blue("No site selected. Use 'Select/Change site' to choose a property."));
+      }
     }
   } catch (error) {
     spinner.fail("Failed to fetch sites");
+    console.error(chalk.red(error.message));
+    process.exitCode = 1;
+  }
+}
+
+async function handleSiteSelection(cfg) {
+  const spinner = ora("Fetching available sites...").start();
+  try {
+    // Fetch sites first
+    const verifiedSites = await getVerifiedSites(cfg);
+    spinner.succeed(`Found ${verifiedSites.length} verified sites`);
+    
+    // Build prompts with the fetched sites
+    const answers = await inquirer.prompt(buildSiteSelectionPrompts(verifiedSites));
+    
+    const success = saveSelectedSite(answers.selectedSite);
+    if (success) {
+      console.log(chalk.green(`Selected site: ${answers.selectedSite}`));
+      console.log(chalk.blue("This site will be used for all queries until you change it."));
+    } else {
+      console.log(chalk.red("Failed to save site selection"));
+    }
+  } catch (error) {
+    spinner.fail("Site selection failed");
     console.error(chalk.red(error.message));
     process.exitCode = 1;
   }
@@ -78,38 +117,72 @@ async function main() {
     // Load and validate configuration first
     const cfg = loadConfig();
     
-    // Build initial prompts
-    const initialAnswers = await inquirer.prompt(await buildPrompts(cfg));
-    
-    // Handle different actions
-    if (initialAnswers.action === "auth") {
-      await handleAuthentication(cfg);
-      return;
-    } else if (initialAnswers.action === "sites") {
-      await handleListSites(cfg);
-      return;
-    }
-    
-    // Build additional prompts based on mode
-    let additionalAnswers = {};
-    if (initialAnswers.mode === "preset") {
-      additionalAnswers = await inquirer.prompt(await buildPresetPrompts(cfg, initialAnswers.source));
-    } else if (initialAnswers.mode === "adhoc") {
-      additionalAnswers = await inquirer.prompt(await buildAdhocPrompts(cfg, initialAnswers.source));
-    }
-    
-    // Merge all answers
-    const answers = { ...initialAnswers, ...additionalAnswers };
-    
-    const spinner = ora("Running query...").start();
-    try {
-      const rows = await runQuery(answers, cfg);
-      spinner.succeed(`Fetched ${rows.length} rows`);
-      await renderOutput(rows, answers, cfg);
-    } catch (e) {
-      spinner.fail("Query failed");
-      console.error(chalk.red(e.message));
-      process.exitCode = 1;
+    // Main CLI loop
+    while (true) {
+      try {
+        // Build initial prompts
+        const initialAnswers = await inquirer.prompt(await buildPrompts(cfg));
+        
+        // Handle different actions
+        if (initialAnswers.action === "auth") {
+          await handleAuthentication(cfg);
+          await waitForEnter();
+          continue;
+        } else if (initialAnswers.action === "sites") {
+          await handleListSites(cfg);
+          await waitForEnter();
+          continue;
+        } else if (initialAnswers.action === "select_site") {
+          await handleSiteSelection(cfg);
+          await waitForEnter();
+          continue;
+        } else if (initialAnswers.action === "exit") {
+          console.log(chalk.blue("Goodbye! 👋"));
+          break;
+        }
+        
+        // Check if we need to select a site for GSC queries
+        if (initialAnswers.source === "searchconsole") {
+          if (!hasValidSiteSelection()) {
+            console.log(chalk.yellow("No Google Search Console site selected."));
+            console.log(chalk.blue("Please select a site first."));
+            await handleSiteSelection(cfg);
+            await waitForEnter();
+            continue;
+          }
+          
+          // Set the selected site as environment variable for the query
+          const selectedSite = getSelectedSite();
+          process.env.GSC_SITE_URL = selectedSite;
+          console.log(chalk.blue(`Using site: ${selectedSite}`));
+        }
+        
+        // Build additional prompts based on mode
+        let additionalAnswers = {};
+        if (initialAnswers.mode === "preset") {
+          additionalAnswers = await inquirer.prompt(await buildPresetPrompts(cfg, initialAnswers.source));
+        } else if (initialAnswers.mode === "adhoc") {
+          additionalAnswers = await inquirer.prompt(await buildAdhocPrompts(cfg, initialAnswers.source));
+        }
+        
+        // Merge all answers
+        const answers = { ...initialAnswers, ...additionalAnswers };
+        
+        const spinner = ora("Running query...").start();
+        try {
+          const rows = await runQuery(answers, cfg);
+          spinner.succeed(`Fetched ${rows.length} rows`);
+          await renderOutput(rows, answers, cfg);
+        } catch (e) {
+          spinner.fail("Query failed");
+          console.error(chalk.red(e.message));
+        }
+        
+        await waitForEnter();
+      } catch (e) {
+        console.error(chalk.red(`Error: ${e.message}`));
+        await waitForEnter();
+      }
     }
   } catch (e) {
     console.error(chalk.red(`Configuration error: ${e.message}`));

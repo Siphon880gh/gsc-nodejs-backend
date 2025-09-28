@@ -23,6 +23,7 @@ npm start
 - **Developer Guide**: [README-developers.md](./README-developers.md) - Architecture and development
 - **Quick Start**: [QUICKSTART.md](./QUICKSTART.md) - Fast setup for immediate use
 - **Context Files**: [context.md](./context.md) - Technical implementation details
+- **Site Selection**: [context-site-selection.md](./context-site-selection.md) - Interactive site selection system
 
 ## Features
 
@@ -32,5 +33,6 @@ npm start
 - 📈 **SEO Analytics** - Built-in presets for common SEO metrics
 - 💾 **Flexible Export** - Table, JSON, and CSV output formats
 - ⚡ **Fast Setup** - Automated OAuth2 flow with token management
+- 🎯 **Smart Site Selection** - Interactive site selection with memory of your choice
 
 Refer to README for high-level context; details are in context files.

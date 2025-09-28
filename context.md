@@ -24,11 +24,12 @@ src/
 
 ## Key Files
 
-- **`src/cli/index.js`** (121 lines) - Main CLI entry point with OAuth2 flow
-- **`src/datasources/searchconsole.js`** (323 lines) - GSC API with OAuth2 authentication
-- **`src/cli/prompts.js`** (246 lines) - Interactive prompts and menu system
-- **`config.js`** (123 lines) - Configuration and presets
-- **`callback.html`** (143 lines) - OAuth2 callback page
+- **`src/cli/index.js`** (193 lines) - Main CLI entry point with continuous loop and site selection
+- **`src/datasources/searchconsole.js`** (322 lines) - GSC API with OAuth2 authentication
+- **`src/cli/prompts.js`** (270 lines) - Interactive prompts and menu system
+- **`src/utils/site-manager.js`** (83 lines) - Site selection and storage utilities
+- **`config.js`** (122 lines) - Configuration and presets
+- **`callback.html`** (142 lines) - OAuth2 callback page
 
 ## OAuth2 Authentication Flow
 
@@ -62,11 +63,13 @@ const response = await auth.request({
 
 ## CLI Interface
 
-Interactive menu system with three main options:
+Interactive menu system with five main options and continuous loop:
 
 1. **Run a query** - Execute preset or ad-hoc queries
 2. **Authenticate with Google** - OAuth2 flow setup
 3. **List available sites** - Show GSC properties
+4. **Select/Change site** - Interactive site selection with memory
+5. **Exit** - Properly terminate the CLI
 
 ```javascript
 // Menu structure in src/cli/prompts.js
@@ -79,9 +82,32 @@ const base = [
       { name: "Run a query", value: "query" },
       { name: "Authenticate with Google", value: "auth" },
       { name: "List available sites", value: "sites" },
+      { name: "Select/Change site", value: "select_site" },
+      { name: "Exit", value: "exit" },
     ],
   }
 ];
+```
+
+### Continuous CLI Loop
+
+The CLI now runs in a continuous loop, returning to the main menu after each action:
+
+```javascript
+// Main CLI loop in src/cli/index.js
+while (true) {
+  const initialAnswers = await inquirer.prompt(await buildPrompts(cfg));
+  
+  if (initialAnswers.action === "auth") {
+    await handleAuthentication(cfg);
+    await waitForEnter();
+    continue;
+  } else if (initialAnswers.action === "exit") {
+    console.log(chalk.blue("Goodbye! 👋"));
+    break;
+  }
+  // ... other actions
+}
 ```
 
 ## Data Sources
@@ -123,11 +149,24 @@ Custom query builder with:
 - **Filters**: Dimension-based filtering
 - **Date Ranges**: Last 7/28/90 days or custom
 
+## Site Selection
+
+The CLI now includes intelligent site selection that remembers your choice:
+
+### Site Selection Features
+- **Interactive Selection**: Choose from verified GSC properties using arrow keys
+- **Persistent Memory**: Your selection is saved in `.selected_site.json`
+- **Verified Properties Only**: Only shows properties you have full access to
+- **Automatic Usage**: Selected site is automatically used for all queries
+- **Easy Changes**: Change your selection anytime from the main menu
+
+**Detailed Implementation**: See [context-site-selection.md](./context-site-selection.md) for complete technical details.
+
 ## Configuration
 
-Environment variables in `.env`:
+Environment variables in `.env` (now optional with site selection):
 ```bash
-GSC_SITE_URL=https://yourdomain.com/
+GSC_SITE_URL=https://yourdomain.com/  # Optional - CLI will prompt if not set
 GSC_CREDENTIALS_FILE=./env/client_secret_*.json
 ```
 
@@ -156,6 +195,9 @@ OAuth2 credentials file structure:
 - ✅ **Direct API Calls** - Bypassed Google APIs client library issues
 - ✅ **Interactive Menu** - Enhanced CLI with authentication options
 - ✅ **Error Handling** - Comprehensive OAuth2 error management
+- ✅ **Smart Site Selection** - Interactive site selection with persistent memory
+- ✅ **Continuous CLI Loop** - Returns to main menu after each action
+- ✅ **Exit Option** - Proper CLI termination with user-friendly goodbye
 
 ## Development
 
