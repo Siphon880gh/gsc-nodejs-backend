@@ -1,12 +1,110 @@
-# OAuth2 Authentication - Technical Details
+# Authentication System - Technical Details
 
 ## Overview
 
-The app uses OAuth2 with browser-based consent for Google Search Console API access. Implements direct OAuth2 client requests to bypass Google APIs client library authentication issues.
+Comprehensive OAuth2 authentication system with direct API requests that bypasses Google APIs client library issues. Uses consistent authentication patterns across all CLI functions.
 
-## OAuth2 Flow Implementation
+## Authentication Helper (`src/utils/auth-helper.js` - 32 lines)
 
-### 1. Client Setup (`src/datasources/searchconsole.js:135-140`)
+### Core Functions
+
+```javascript
+/**
+ * Get a properly authenticated OAuth2 client
+ * This ensures the authentication is fresh and working
+ */
+export async function getAuthenticatedClient(cfg) {
+  const gscConfig = cfg.sources.searchconsole;
+  
+  // Get OAuth2 client
+  const auth = await getOAuth2Client(gscConfig);
+  
+  // Ensure the auth client is properly authenticated by getting a fresh token
+  await auth.getAccessToken();
+  
+  return auth;
+}
+
+/**
+ * Ensure authentication is working before proceeding
+ * Returns the authenticated client or throws an error
+ */
+export async function ensureAuthentication(cfg) {
+  try {
+    const auth = await getAuthenticatedClient(cfg);
+    console.log(chalk.blue("Authentication verified"));
+    return auth;
+  } catch (error) {
+    throw new Error(`Authentication failed: ${error.message}`);
+  }
+}
+```
+
+## Direct OAuth2 Requests
+
+### Why Direct Requests?
+
+The Google APIs client library has authentication issues. All functions use direct OAuth2 client requests for reliability:
+
+```javascript
+// Site listing (working pattern)
+const response = await auth.request({
+  url: 'https://searchconsole.googleapis.com/webmasters/v3/sites',
+  method: 'GET'
+});
+
+// Query execution (fixed to match working pattern)
+const response = await auth.request({
+  url: `https://searchconsole.googleapis.com/webmasters/v3/sites/${encodeURIComponent(siteUrl)}/searchAnalytics/query`,
+  method: 'POST',
+  data: requestBody
+});
+```
+
+## CLI Integration
+
+### Authentication Flow (`src/cli/index.js:162-171`)
+
+```javascript
+// Ensure authentication is available before running queries
+let auth;
+try {
+  auth = await ensureAuthentication(cfg);
+} catch (error) {
+  console.log(chalk.yellow("Authentication required. Please authenticate first."));
+  await handleAuthentication(cfg);
+  await waitForEnter();
+  continue;
+}
+```
+
+### Consistent Usage Across Handlers
+
+All CLI handlers use the same authentication pattern:
+
+```javascript
+// Site listing handler
+async function handleListSites(cfg) {
+  await ensureAuthentication(cfg);
+  const sites = await getAvailableSites(cfg);
+  // ...
+}
+
+// Site selection handler  
+async function handleSiteSelection(cfg) {
+  await ensureAuthentication(cfg);
+  const verifiedSites = await getVerifiedSites(cfg);
+  // ...
+}
+
+// Query execution
+const auth = await ensureAuthentication(cfg);
+const rows = await runQuery(answers, cfg, auth);
+```
+
+## OAuth2 Client Setup
+
+### Client Initialization (`src/datasources/searchconsole.js:135-140`)
 
 ```javascript
 const oauth2Client = new OAuth2Client(
@@ -16,7 +114,7 @@ const oauth2Client = new OAuth2Client(
 );
 ```
 
-### 2. Token Management (`src/datasources/searchconsole.js:145-166`)
+### Token Management
 
 ```javascript
 // Check for stored tokens
@@ -28,60 +126,19 @@ oauth2Client.setCredentials(tokens);
 await oauth2Client.getAccessToken();
 ```
 
-### 3. Browser Consent Flow (`src/datasources/searchconsole.js:168-195`)
+### Browser Consent Flow
 
 ```javascript
-// Generate consent URL
 const authUrl = oauth2Client.generateAuthUrl({
   access_type: 'offline',
   scope: ['https://www.googleapis.com/auth/webmasters.readonly'],
   prompt: 'consent'
 });
 
-// Open browser and wait for callback
 await open(authUrl);
 const code = await waitForCallback();
-
-// Exchange code for tokens
 const { tokens: newTokens } = await oauth2Client.getToken(code);
 ```
-
-### 4. Callback Server (`src/datasources/searchconsole.js:198-258`)
-
-HTTP server on `localhost:8888` handles OAuth2 redirects:
-
-```javascript
-const server = createServer(async (req, res) => {
-  const url = new URL(req.url, 'http://localhost:8888');
-  const code = url.searchParams.get('code');
-  
-  if (code) {
-    resolve(code);
-    server.close();
-  }
-});
-```
-
-## Direct API Implementation
-
-### Problem Solved
-
-Google APIs client library had authentication issues. Solution uses OAuth2 client's request method directly:
-
-```javascript
-// Direct API call bypassing Google APIs client library
-const response = await auth.request({
-  url: 'https://searchconsole.googleapis.com/webmasters/v3/sites',
-  method: 'GET'
-});
-```
-
-### Authentication Headers
-
-OAuth2 client automatically handles:
-- `Authorization: Bearer <access_token>`
-- Token refresh on expiration
-- Request retry logic
 
 ## Token Storage
 
@@ -104,45 +161,9 @@ OAuth2 client automatically handles:
 3. **Token Validation**: Check expiry before API calls
 4. **Token Storage**: Persistent storage in `.oauth_tokens.json`
 
-## CLI Integration
-
-### Authentication Menu (`src/cli/index.js:21-45`)
-
-```javascript
-async function handleAuthentication(cfg) {
-  const spinner = ora("Authenticating with Google...").start();
-  try {
-    // Set dummy site URL for auth
-    process.env.GSC_SITE_URL = "https://example.com/";
-    
-    const auth = await getOAuth2Client(cfg.sources.searchconsole);
-    spinner.succeed("Authentication successful!");
-  } catch (error) {
-    spinner.fail("Authentication failed");
-  }
-}
-```
-
-### Site Listing (`src/cli/index.js:47-62`)
-
-```javascript
-async function handleListSites(cfg) {
-  const sites = await getAvailableSites(cfg);
-  sites.forEach((site, index) => {
-    console.log(`${index + 1}. ${site.siteUrl}`);
-  });
-}
-```
-
 ## Error Handling
 
 ### OAuth2 Errors
-
-- **401 Unauthorized**: Token expired or invalid
-- **403 Forbidden**: Insufficient permissions
-- **Network Errors**: Connection issues
-
-### User Guidance
 
 ```javascript
 if (error.code === 401) {
@@ -152,50 +173,30 @@ if (error.code === 401) {
 }
 ```
 
+### Authentication Verification
+
+```javascript
+try {
+  const auth = await ensureAuthentication(cfg);
+  // Proceed with authenticated operations
+} catch (error) {
+  // Handle authentication failure
+  console.log(chalk.yellow("Authentication required. Please authenticate first."));
+}
+```
+
 ## Security Considerations
 
 - **Token Storage**: Local file with restricted permissions
 - **HTTPS Only**: All API calls use HTTPS
 - **Scope Limitation**: Read-only access to Search Console
 - **Token Expiry**: Automatic refresh prevents long-lived tokens
+- **Direct Requests**: Bypasses Google APIs client library security issues
 
-## Configuration
+## Benefits
 
-### Environment Variables
-
-```bash
-GSC_SITE_URL=https://yourdomain.com/
-GSC_CREDENTIALS_FILE=./env/client_secret_*.json
-```
-
-### OAuth2 Credentials File
-
-```json
-{
-  "web": {
-    "client_id": "13637964853-*.apps.googleusercontent.com",
-    "client_secret": "GOCSPX-*",
-    "redirect_uris": ["http://localhost:8888/callback.html"]
-  }
-}
-```
-
-## Debugging
-
-### OAuth2 Flow Debug
-
-```javascript
-console.log("OAuth2 callback received!");
-console.log("Authorization code:", code ? "Present" : "Missing");
-console.log("Tokens received:", !!newTokens);
-console.log("Access token present:", !!newTokens.access_token);
-```
-
-### API Call Debug
-
-```javascript
-console.log("OAuth2 client credentials:", !!auth.credentials);
-console.log("Access token present:", !!auth.credentials?.access_token);
-console.log("Token type:", auth.credentials?.token_type);
-console.log("Scope:", auth.credentials?.scope);
-```
+- **Consistent Authentication**: Same pattern used across all functions
+- **Reliable Requests**: Direct OAuth2 requests bypass client library issues
+- **Fresh Tokens**: Ensures authentication is always current
+- **Error Handling**: Comprehensive error management and user guidance
+- **Reusable Code**: Single source of truth for authentication logic

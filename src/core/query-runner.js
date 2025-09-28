@@ -13,7 +13,7 @@ import { validateQuery } from "../cli/validators.js";
  * @property {Array} filters - Array of filter objects
  */
 
-export async function runQuery(answers, cfg) {
+export async function runQuery(answers, cfg, auth = null) {
   const normalized = normalize(answers, cfg);
   
   // Validate the normalized query
@@ -24,7 +24,7 @@ export async function runQuery(answers, cfg) {
 
   // Route to appropriate data source
   if (normalized.source === "searchconsole") {
-    return runGSC(normalized, cfg);
+    return runGSC(normalized, cfg, auth);
   } else if (normalized.source === "bigquery") {
     return runBQ(normalized, cfg);
   } else {

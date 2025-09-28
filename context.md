@@ -24,10 +24,11 @@ src/
 
 ## Key Files
 
-- **`src/cli/index.js`** (193 lines) - Main CLI entry point with continuous loop and site selection
-- **`src/datasources/searchconsole.js`** (322 lines) - GSC API with OAuth2 authentication
-- **`src/cli/prompts.js`** (270 lines) - Interactive prompts and menu system
+- **`src/cli/index.js`** (210 lines) - Main CLI entry point with continuous loop and site selection
+- **`src/datasources/searchconsole.js`** (325 lines) - GSC API with direct OAuth2 requests
+- **`src/cli/prompts.js`** (263 lines) - Interactive prompts and menu system
 - **`src/utils/site-manager.js`** (83 lines) - Site selection and storage utilities
+- **`src/utils/auth-helper.js`** (32 lines) - Reusable authentication utilities
 - **`config.js`** (122 lines) - Configuration and presets
 - **`callback.html`** (142 lines) - OAuth2 callback page
 
@@ -54,10 +55,17 @@ const authUrl = oauth2Client.generateAuthUrl({
 **Key Implementation**: Direct OAuth2 client request method bypasses Google APIs client library authentication issues:
 
 ```javascript
-// Direct API call using OAuth2 client
+// Direct API call using OAuth2 client (for site listing)
 const response = await auth.request({
   url: 'https://searchconsole.googleapis.com/webmasters/v3/sites',
   method: 'GET'
+});
+
+// Direct API call for queries (bypasses Google APIs client library)
+const response = await auth.request({
+  url: `https://searchconsole.googleapis.com/webmasters/v3/sites/${encodeURIComponent(siteUrl)}/searchAnalytics/query`,
+  method: 'POST',
+  data: requestBody
 });
 ```
 
@@ -162,6 +170,29 @@ The CLI now includes intelligent site selection that remembers your choice:
 
 **Detailed Implementation**: See [context-site-selection.md](./context-site-selection.md) for complete technical details.
 
+## Authentication Helper
+
+Reusable authentication utilities ensure consistent authentication across all CLI functions:
+
+```javascript
+// src/utils/auth-helper.js
+export async function getAuthenticatedClient(cfg) {
+  const auth = await getOAuth2Client(gscConfig);
+  await auth.getAccessToken(); // Ensure fresh token
+  return auth;
+}
+
+export async function ensureAuthentication(cfg) {
+  const auth = await getAuthenticatedClient(cfg);
+  console.log(chalk.blue("Authentication verified"));
+  return auth;
+}
+```
+
+**Benefits**: Consistent authentication pattern used by all CLI handlers (queries, site listing, site selection).
+
+**Detailed Implementation**: See [context-auth.md](./context-auth.md) for complete authentication system details.
+
 ## Configuration
 
 Environment variables in `.env` (now optional with site selection):
@@ -198,6 +229,8 @@ OAuth2 credentials file structure:
 - ✅ **Smart Site Selection** - Interactive site selection with persistent memory
 - ✅ **Continuous CLI Loop** - Returns to main menu after each action
 - ✅ **Exit Option** - Proper CLI termination with user-friendly goodbye
+- ✅ **Authentication Helper** - Reusable authentication utilities for consistency
+- ✅ **Direct OAuth2 Queries** - Query execution uses direct requests like working functions
 
 ## Development
 

@@ -28,13 +28,6 @@ export async function buildPrompts(cfg) {
     },
     {
       type: "list",
-      name: "source",
-      message: "Select data source",
-      choices: enabledSources,
-      when: (answers) => answers.action === "query",
-    },
-    {
-      type: "list",
       name: "mode",
       message: "Choose query mode",
       choices: [

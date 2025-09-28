@@ -18,6 +18,7 @@ import { runQuery } from "../core/query-runner.js";
 import { renderOutput } from "./renderers.js";
 import { getOAuth2Client, getAvailableSites } from "../datasources/searchconsole.js";
 import { saveSelectedSite, getSelectedSite, hasValidSiteSelection, clearSelectedSite, getVerifiedSites } from "../utils/site-manager.js";
+import { ensureAuthentication } from "../utils/auth-helper.js";
 
 // Helper function to wait for user to continue
 async function waitForEnter() {
@@ -58,6 +59,8 @@ async function handleAuthentication(cfg) {
 async function handleListSites(cfg) {
   const spinner = ora("Fetching available sites...").start();
   try {
+    // Ensure authentication first
+    await ensureAuthentication(cfg);
     const sites = await getAvailableSites(cfg);
     spinner.succeed(`Found ${sites.length} sites`);
     
@@ -91,6 +94,8 @@ async function handleListSites(cfg) {
 async function handleSiteSelection(cfg) {
   const spinner = ora("Fetching available sites...").start();
   try {
+    // Ensure authentication first
+    await ensureAuthentication(cfg);
     // Fetch sites first
     const verifiedSites = await getVerifiedSites(cfg);
     spinner.succeed(`Found ${verifiedSites.length} verified sites`);
@@ -141,36 +146,48 @@ async function main() {
           break;
         }
         
+        // Hardcode source to searchconsole since we only support GSC
+        const source = "searchconsole";
+        
         // Check if we need to select a site for GSC queries
-        if (initialAnswers.source === "searchconsole") {
-          if (!hasValidSiteSelection()) {
-            console.log(chalk.yellow("No Google Search Console site selected."));
-            console.log(chalk.blue("Please select a site first."));
-            await handleSiteSelection(cfg);
-            await waitForEnter();
-            continue;
-          }
-          
-          // Set the selected site as environment variable for the query
-          const selectedSite = getSelectedSite();
-          process.env.GSC_SITE_URL = selectedSite;
-          console.log(chalk.blue(`Using site: ${selectedSite}`));
+        if (!hasValidSiteSelection()) {
+          console.log(chalk.yellow("No Google Search Console site selected."));
+          console.log(chalk.blue("Please select a site first."));
+          await handleSiteSelection(cfg);
+          await waitForEnter();
+          continue;
+        }
+        
+        // Set the selected site as environment variable for the query
+        const selectedSite = getSelectedSite();
+        process.env.GSC_SITE_URL = selectedSite;
+        console.log(chalk.blue(`Using site: ${selectedSite}`));
+        
+        // Ensure authentication is available before running queries
+        let auth;
+        try {
+          auth = await ensureAuthentication(cfg);
+        } catch (error) {
+          console.log(chalk.yellow("Authentication required. Please authenticate first."));
+          await handleAuthentication(cfg);
+          await waitForEnter();
+          continue;
         }
         
         // Build additional prompts based on mode
         let additionalAnswers = {};
         if (initialAnswers.mode === "preset") {
-          additionalAnswers = await inquirer.prompt(await buildPresetPrompts(cfg, initialAnswers.source));
+          additionalAnswers = await inquirer.prompt(await buildPresetPrompts(cfg, source));
         } else if (initialAnswers.mode === "adhoc") {
-          additionalAnswers = await inquirer.prompt(await buildAdhocPrompts(cfg, initialAnswers.source));
+          additionalAnswers = await inquirer.prompt(await buildAdhocPrompts(cfg, source));
         }
         
-        // Merge all answers
-        const answers = { ...initialAnswers, ...additionalAnswers };
+        // Merge all answers and add source
+        const answers = { ...initialAnswers, ...additionalAnswers, source };
         
         const spinner = ora("Running query...").start();
         try {
-          const rows = await runQuery(answers, cfg);
+          const rows = await runQuery(answers, cfg, auth);
           spinner.succeed(`Fetched ${rows.length} rows`);
           await renderOutput(rows, answers, cfg);
         } catch (e) {

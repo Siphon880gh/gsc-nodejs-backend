@@ -24,6 +24,7 @@ npm start
 - **Quick Start**: [QUICKSTART.md](./QUICKSTART.md) - Fast setup for immediate use
 - **Context Files**: [context.md](./context.md) - Technical implementation details
 - **Site Selection**: [context-site-selection.md](./context-site-selection.md) - Interactive site selection system
+- **Authentication**: [context-auth.md](./context-auth.md) - OAuth2 authentication system
 
 ## Features
 

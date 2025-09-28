@@ -5,7 +5,7 @@ import { readFileSync } from "fs";
 import { join } from "path";
 import open from "open";
 
-export default async function runGSC(query, cfg) {
+export default async function runGSC(query, cfg, auth = null) {
   const gscConfig = cfg.sources.searchconsole;
   const siteUrl = process.env.GSC_SITE_URL || gscConfig.siteUrl;
   
@@ -13,29 +13,32 @@ export default async function runGSC(query, cfg) {
     throw new Error("GSC site URL is required. Set GSC_SITE_URL environment variable or configure in config.js");
   }
 
-  // Initialize OAuth2 client
-  const auth = await getOAuth2Client(gscConfig);
-
-  const gsc = searchconsole({ version: 'v1', auth });
+  // Use provided auth or initialize OAuth2 client
+  if (!auth) {
+    auth = await getOAuth2Client(gscConfig);
+  }
 
   try {
-    // Build the GSC request
-    const request = {
-      siteUrl: siteUrl,
-      requestBody: {
-        startDate: query.dateRange.start,
-        endDate: query.dateRange.end,
-        dimensions: query.dimensions || [],
-        rowLimit: query.limit || gscConfig.pageSize || 1000,
-        startRow: query.startRow || 0,
-        dimensionFilterGroups: buildDimensionFilters(query.filters),
-        searchType: query.searchType || 'web',
-        dataState: query.dataState || 'final',
-      },
+    // Build the GSC request body
+    const requestBody = {
+      startDate: query.dateRange.start,
+      endDate: query.dateRange.end,
+      dimensions: query.dimensions || [],
+      rowLimit: query.limit || gscConfig.pageSize || 1000,
+      startRow: query.startRow || 0,
+      dimensionFilterGroups: buildDimensionFilters(query.filters),
+      searchType: query.searchType || 'web',
+      dataState: query.dataState || 'final',
     };
 
     console.log(chalk.blue(`Querying GSC site ${siteUrl}...`));
-    const response = await gsc.searchanalytics.query(request);
+    
+    // Use direct OAuth2 client request like the working functions
+    const response = await auth.request({
+      url: `https://searchconsole.googleapis.com/webmasters/v3/sites/${encodeURIComponent(siteUrl)}/searchAnalytics/query`,
+      method: 'POST',
+      data: requestBody
+    });
     
     // Transform response to array of objects
     const rows = (response.data.rows || []).map(row => {
