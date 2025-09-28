@@ -17,7 +17,7 @@ import { buildPrompts, buildPresetPrompts, buildAdhocPrompts, buildSiteSelection
 import { runQuery } from "../core/query-runner.js";
 import { renderOutput } from "./renderers.js";
 import { getOAuth2Client, getAvailableSites } from "../datasources/searchconsole.js";
-import { saveSelectedSite, getSelectedSite, hasValidSiteSelection, clearSelectedSite, getVerifiedSites } from "../utils/site-manager.js";
+import { saveSelectedSite, getSelectedSite, hasValidSiteSelection, clearSelectedSite, getVerifiedSites, signOut } from "../utils/site-manager.js";
 import { ensureAuthentication } from "../utils/auth-helper.js";
 
 // Helper function to wait for user to continue
@@ -117,6 +117,19 @@ async function handleSiteSelection(cfg) {
   }
 }
 
+async function handleSignOut() {
+  console.log(chalk.blue("Signing out..."));
+  
+  const cleared = await signOut();
+  
+  if (cleared.length > 0) {
+    console.log(chalk.green(`Successfully cleared: ${cleared.join(', ')}`));
+    console.log(chalk.blue("You will need to authenticate again to use the CLI."));
+  } else {
+    console.log(chalk.yellow("No stored data found to clear."));
+  }
+}
+
 async function main() {
   try {
     // Load and validate configuration first
@@ -139,6 +152,10 @@ async function main() {
           continue;
         } else if (initialAnswers.action === "select_site") {
           await handleSiteSelection(cfg);
+          await waitForEnter();
+          continue;
+        } else if (initialAnswers.action === "signout") {
+          await handleSignOut();
           await waitForEnter();
           continue;
         } else if (initialAnswers.action === "exit") {

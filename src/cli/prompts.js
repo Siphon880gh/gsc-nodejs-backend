@@ -23,6 +23,7 @@ export async function buildPrompts(cfg) {
         { name: "Authenticate with Google", value: "auth" },
         { name: "List available sites", value: "sites" },
         { name: "Select/Change site", value: "select_site" },
+        { name: "Sign out", value: "signout" },
         { name: "Exit", value: "exit" },
       ],
     },

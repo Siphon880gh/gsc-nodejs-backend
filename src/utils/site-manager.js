@@ -81,3 +81,37 @@ export function hasValidSiteSelection() {
   const selectedSite = getSelectedSite();
   return selectedSite && selectedSite.trim() !== '';
 }
+
+/**
+ * Clear all stored authentication and site data
+ */
+export async function signOut() {
+  const { unlinkSync, existsSync } = await import('fs');
+  const { join } = await import('path');
+  
+  let cleared = [];
+  
+  // Clear OAuth tokens
+  const tokenPath = join(process.cwd(), '.oauth_tokens.json');
+  if (existsSync(tokenPath)) {
+    try {
+      unlinkSync(tokenPath);
+      cleared.push('OAuth tokens');
+    } catch (error) {
+      console.error('Failed to clear OAuth tokens:', error.message);
+    }
+  }
+  
+  // Clear selected site
+  const sitePath = join(process.cwd(), '.selected_site.json');
+  if (existsSync(sitePath)) {
+    try {
+      unlinkSync(sitePath);
+      cleared.push('selected site');
+    } catch (error) {
+      console.error('Failed to clear selected site:', error.message);
+    }
+  }
+  
+  return cleared;
+}
