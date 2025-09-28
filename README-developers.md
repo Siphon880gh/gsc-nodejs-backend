@@ -1,13 +1,13 @@
-# Analytics CLI (Inquirer)
+# Google Search Console CLI
 
-A cross-source analytics CLI that provides consistent prompts and outputs for querying GA4 Data API and BigQuery. Built with Node.js and Inquirer for an interactive command-line experience.
+A Google Search Console CLI that provides consistent prompts and outputs for querying GSC data with optional BigQuery support. Built with Node.js and Inquirer for an interactive command-line experience.
 
 ## Overview
 
 This CLI tool allows you to:
-- Query GA4 properties using the Data API
-- Query BigQuery datasets (including GA4 exports)
-- Use preset queries for common analytics needs
+- Query Google Search Console data using the Search Console API
+- Query BigQuery datasets with GSC data exports (optional)
+- Use preset queries for common SEO analytics needs
 - Create ad-hoc queries with custom metrics, dimensions, and filters
 - Output results in table, JSON, or CSV formats
 - Save results to files for further analysis
@@ -16,10 +16,10 @@ This CLI tool allows you to:
 
 - Node.js >= 18
 - Google Cloud account with appropriate permissions
-- GA4 property access (for GA4 queries)
-- BigQuery dataset access (for BigQuery queries)
+- Google Search Console site access
+- BigQuery dataset access (optional, for BigQuery queries)
 
-> **📋 Setup Required**: Before using this CLI, you need to configure GA4 and BigQuery access. See [README-SETUP.md](./README-SETUP.md) for detailed setup instructions.
+> **📋 Setup Required**: Before using this CLI, you need to configure GSC access. BigQuery is optional. See [README-SETUP.md](./README-SETUP.md) for detailed setup instructions.
 
 ## Setup
 
@@ -42,20 +42,21 @@ This CLI tool allows you to:
 
 4. **Configure data sources:**
    - Edit `config.js` to match your setup
-   - Set property IDs, project IDs, and dataset names
+   - Set GSC site URL and credentials
+   - Set BigQuery project/dataset (optional)
    - Customize presets and limits as needed
 
 ### 🧪 Testing with Sample Data
 
-**Quick Test Setup (No GA4 Required):**
+**Quick Test Setup (BigQuery Optional):**
 ```bash
-# Use Google's free sample dataset for testing
+# Use Google's free sample dataset for testing (optional)
 BQ_PROJECT_ID=your-test-project-id
-BQ_DATASET=ga4_obfuscated_sample_ecommerce
+BQ_DATASET=gsc_sample_data
 BQ_LOCATION=US
 ```
 
-This uses Google's public GA4 sample dataset from the Google Merchandise Store, allowing you to test the CLI without setting up your own GA4 property.
+This uses Google's public sample dataset, allowing you to test the CLI without setting up your own BigQuery dataset.
 
 ## Running
 
@@ -83,13 +84,13 @@ npm run dev
 Create a `.env` file with the following variables:
 
 ```bash
-# GA4 Configuration
-GA4_PROPERTY_ID=123456789
-GA4_CREDENTIALS_FILE=./secrets/ga4-sa.json
+# GSC Configuration
+GSC_SITE_URL=https://example.com/
+GSC_CREDENTIALS_FILE=./secrets/gsc-sa.json
 
-# BigQuery Configuration
+# BigQuery Configuration (Optional)
 BQ_PROJECT_ID=your-project-id
-BQ_DATASET=analytics_123456789
+BQ_DATASET=gsc_export_data
 BQ_LOCATION=US
 
 # Alternative: Use Application Default Credentials
@@ -100,8 +101,8 @@ BQ_LOCATION=US
 
 The `config.js` file contains:
 
-- **Sources**: Configuration for GA4 and BigQuery
-- **Presets**: Pre-defined queries for common analytics needs
+- **Sources**: Configuration for GSC and BigQuery (optional)
+- **Presets**: Pre-defined queries for common SEO analytics needs
 - **Output**: Default output format and file settings
 - **Limits**: Safety limits for queries and runtime
 
@@ -128,66 +129,57 @@ presets: [
 
 ## Data Sources
 
-### GA4 Data API
+### Google Search Console API
 
 **Required Environment Variables:**
-- `GA4_PROPERTY_ID` - Your GA4 property ID
-- `GA4_CREDENTIALS_FILE` - Path to service account JSON file
+- `GSC_SITE_URL` - Your GSC site URL (e.g., https://example.com/)
+- `GSC_CREDENTIALS_FILE` - Path to service account JSON file
 
 **Common Metrics:**
-- `sessions` - Number of sessions
-- `totalUsers` - Total users
-- `newUsers` - New users
-- `activeUsers` - Active users
-- `averageSessionDuration` - Average session duration
-- `eventCount` - Number of events
-- `bounceRate` - Bounce rate
-- `conversionRate` - Conversion rate
+- `clicks` - Number of clicks
+- `impressions` - Number of impressions
+- `ctr` - Click-through rate
+- `position` - Average position
 
 **Common Dimensions:**
-- `date` - Date
-- `pagePath` - Page path
-- `pageTitle` - Page title
-- `firstUserSource` - Traffic source
-- `firstUserMedium` - Traffic medium
+- `query` - Search query
+- `page` - Page URL
 - `country` - Country
-- `deviceCategory` - Device category
-- `operatingSystem` - Operating system
-- `browser` - Browser
+- `device` - Device type
+- `searchAppearance` - Search appearance type
+- `date` - Date
 
-### BigQuery
+### BigQuery (Optional)
 
-**Required Environment Variables:**
+**Required Environment Variables (Optional):**
 - `BQ_PROJECT_ID` - Your BigQuery project ID
-- `BQ_DATASET` - Dataset name (e.g., `analytics_123456789`)
+- `BQ_DATASET` - Dataset name (e.g., `gsc_export_data`)
 - `BQ_LOCATION` - Location (default: "US")
 
-**Common Fields (GA4 Export):**
-- `event_date` - Event date
-- `event_name` - Event name
-- `page_location` - Page location
-- `page_title` - Page title
-- `user_pseudo_id` - User ID
-- `session_id` - Session ID
+**Common Fields (GSC Export):**
+- `date` - Date
+- `query` - Search query
+- `page` - Page URL
+- `clicks` - Number of clicks
+- `impressions` - Number of impressions
+- `ctr` - Click-through rate
+- `position` - Average position
 - `country` - Country
-- `device_category` - Device category
-- `source` - Traffic source
-- `medium` - Traffic medium
+- `device` - Device type
 
 ## Presets
 
-### GA4 Presets
+### GSC Presets
 
-1. **Top Pages by Users** - Most popular pages by total users
-2. **Users by Country** - User distribution by country
-3. **Event Count by Date** - Daily event counts over time
-4. **Sessions by Traffic Source** - Sessions by source and medium
-5. **Engagement Metrics** - Key engagement metrics by page
+1. **Top Queries by Clicks** - Most popular search queries by clicks
+2. **Top Pages by Clicks** - Most popular pages by clicks
+3. **Queries by Country** - Search queries broken down by country
+4. **Performance by Device** - Search performance by device type
+5. **Search Appearance Types** - Performance by search appearance type
 
-### BigQuery Presets
+### BigQuery Presets (Optional)
 
-1. **BigQuery Events Sample** - Sample of events from BigQuery export
-2. **Page Views by Date** - Daily page views from BigQuery
+1. **BigQuery GSC Data Sample** - Sample of GSC data from BigQuery export
 
 ## Ad-hoc Queries
 
@@ -239,7 +231,7 @@ Integration tests are gated by environment variables and will be skipped if cred
 
 ```bash
 # Set up test environment
-export GA4_PROPERTY_ID=your-test-property
+export GSC_SITE_URL=https://example.com/
 export BQ_PROJECT_ID=your-test-project
 export BQ_DATASET=your-test-dataset
 
@@ -248,28 +240,28 @@ npm test
 ```
 
 ### Test Files
-- `tests/ga4.test.js` - GA4 data source tests
-- `tests/bigquery.test.js` - BigQuery data source tests
+- `tests/gsc.test.js` - GSC data source tests
+- `tests/bigquery.test.js` - BigQuery data source tests (optional)
 - `tests/query-runner.test.js` - Query runner tests
 
 ## Troubleshooting
 
 ### Common Issues
 
-**GA4 Access Denied (403)**
-- Check that your service account has access to the GA4 property
-- Ensure the service account has "Viewer" or "Analyst" role
-- Verify the property ID is correct
+**GSC Access Denied (403)**
+- Check that your service account has access to the GSC site
+- Ensure the service account has "Search Console" role
+- Verify the site URL is correct
 
 **BigQuery Access Denied (403)**
 - Check that your service account has "Job User" and "Data Viewer" roles
 - Verify the project ID and dataset name
 - Ensure the dataset exists and is accessible
 
-**Property/Dataset Not Found (404)**
-- Double-check your property ID or project ID
+**Site/Dataset Not Found (404)**
+- Double-check your site URL or project ID
 - Verify the dataset name matches exactly
-- Ensure the property/dataset is in the correct Google Cloud project
+- Ensure the site/dataset is in the correct Google Cloud project
 
 **Invalid Query (400)**
 - Check that your metrics and dimensions are valid for the data source

@@ -2,7 +2,7 @@
 
 ## 🚀 Get Started in 5 Minutes
 
-> **⚠️ Prerequisites**: You need Google Search Console, GA4, and Google Cloud Platform access. See [README-SETUP.md](./README-SETUP.md) for complete setup instructions.
+> **⚠️ Prerequisites**: You need Google Search Console and Google Cloud Platform access. See [README-SETUP.md](./README-SETUP.md) for complete setup instructions.
 
 ### 1. Install Dependencies
 ```bash
@@ -18,10 +18,8 @@ cp env.example .env
 # You'll need:
 # - GSC_SITE_URL (your GSC property URL)
 # - GSC_CREDENTIALS_FILE (path to service account JSON)
-# - GA4_PROPERTY_ID (your GA4 property ID)
-# - GA4_CREDENTIALS_FILE (path to service account JSON)
-# - BQ_PROJECT_ID (your BigQuery project ID)
-# - BQ_DATASET (your BigQuery dataset name)
+# - BQ_PROJECT_ID (your BigQuery project ID) - Optional
+# - BQ_DATASET (your BigQuery dataset name) - Optional
 ```
 
 ### 3. Add Service Account Credentials
@@ -51,11 +49,6 @@ npm start
 - **Queries by Country** - Geographic search breakdown
 - **Performance by Device** - Mobile vs desktop search performance
 - **Search Appearance Types** - Rich results and special features
-- **Top Pages by Users** - Most popular pages (GA4)
-- **Users by Country** - Geographic breakdown (GA4)
-- **Event Count by Date** - Daily event trends (GA4)
-- **Sessions by Traffic Source** - Traffic analysis (GA4)
-- **Engagement Metrics** - Key performance indicators (GA4)
 
 ### Ad-hoc Queries
 - Select custom metrics and dimensions
@@ -65,12 +58,11 @@ npm start
 
 ### Data Sources
 - **Google Search Console** - Search performance data
-- **GA4 Data API** - Real-time analytics data
-- **BigQuery** - Historical data and custom analysis
+- **BigQuery** - Historical data and custom analysis (optional)
 
 ## 📊 Example Workflow
 
-1. **Select Data Source**: Choose Google Search Console, GA4, or BigQuery
+1. **Select Data Source**: Choose Google Search Console or BigQuery
 2. **Choose Mode**: Pick a preset or create custom query
 3. **Configure Query**: Set date range, metrics, dimensions
 4. **Run Query**: Execute and view results

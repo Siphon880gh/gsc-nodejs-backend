@@ -29,8 +29,6 @@ try {
   const envVars = [
     "GSC_SITE_URL",
     "GSC_CREDENTIALS_FILE",
-    "GA4_PROPERTY_ID",
-    "GA4_CREDENTIALS_FILE", 
     "BQ_PROJECT_ID",
     "BQ_DATASET"
   ];

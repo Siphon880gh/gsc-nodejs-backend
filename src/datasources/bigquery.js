@@ -69,8 +69,8 @@ function buildSQL(query, projectId, dataset, bqConfig) {
   
   const whereClause = buildWhereClause(query);
   
-  // Use the configured table (default to events_* for GA4 export)
-  const table = bqConfig.tables?.ga4Events || "events_*";
+  // Use the configured table (default to gsc_data_* for GSC export)
+  const table = bqConfig.tables?.gscData || "gsc_data_*";
   
   const sql = `
     SELECT ${fields}

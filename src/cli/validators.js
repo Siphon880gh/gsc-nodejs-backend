@@ -6,14 +6,11 @@ export function validateConfig(cfg) {
     if (!cfg.sources.searchconsole.siteUrl && !process.env.GSC_SITE_URL) {
       errors.push("GSC site URL is required (set GSC_SITE_URL env var or in config)");
     }
-  }
-
-  // Check GA4 configuration
-  if (cfg.sources.ga4?.enabled) {
-    if (!cfg.sources.ga4.propertyId && !process.env.GA4_PROPERTY_ID) {
-      errors.push("GA4 property ID is required (set GA4_PROPERTY_ID env var or in config)");
+    if (!cfg.sources.searchconsole.credentialsFile && !process.env.GSC_CREDENTIALS_FILE && !process.env.GOOGLE_APPLICATION_CREDENTIALS) {
+      errors.push("GSC credentials are required (set GSC_CREDENTIALS_FILE or GOOGLE_APPLICATION_CREDENTIALS env var or in config)");
     }
   }
+
 
   // Check BigQuery configuration
   if (cfg.sources.bigquery?.enabled) {

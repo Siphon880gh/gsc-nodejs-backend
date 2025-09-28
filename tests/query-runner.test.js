@@ -2,7 +2,7 @@ import { describe, it, expect, vi, beforeEach } from "vitest";
 import { runQuery } from "../src/core/query-runner.js";
 
 // Mock the data sources
-vi.mock("../src/datasources/ga4.js", () => ({
+vi.mock("../src/datasources/searchconsole.js", () => ({
   default: vi.fn(),
 }));
 
@@ -11,39 +11,39 @@ vi.mock("../src/datasources/bigquery.js", () => ({
 }));
 
 describe("Query Runner", () => {
-  let mockRunGA4;
+  let mockRunGSC;
   let mockRunBQ;
 
   beforeEach(async () => {
     vi.clearAllMocks();
     
     // Import and mock the data sources
-    const ga4Module = await import("../src/datasources/ga4.js");
+    const gscModule = await import("../src/datasources/searchconsole.js");
     const bqModule = await import("../src/datasources/bigquery.js");
     
-    mockRunGA4 = ga4Module.default;
+    mockRunGSC = gscModule.default;
     mockRunBQ = bqModule.default;
   });
 
-  it("should route GA4 queries to GA4 data source", async () => {
+  it("should route GSC queries to GSC data source", async () => {
     const answers = {
-      source: "ga4",
+      source: "searchconsole",
       mode: "preset",
-      preset: "top-pages",
+      preset: "top-pages-gsc",
       dateRangeType: "last7",
     };
 
     const config = {
       sources: {
-        ga4: { enabled: true },
+        searchconsole: { enabled: true },
       },
       presets: [
         {
-          id: "top-pages",
-          source: "ga4",
-          metrics: ["totalUsers"],
-          dimensions: ["pagePath"],
-          orderBys: [{ metric: "totalUsers", desc: true }],
+          id: "top-pages-gsc",
+          source: "searchconsole",
+          metrics: ["clicks", "impressions"],
+          dimensions: ["page"],
+          orderBys: [{ metric: "clicks", desc: true }],
           limit: 50,
           filters: [],
         },
@@ -52,21 +52,21 @@ describe("Query Runner", () => {
     };
 
     const mockResult = [
-      { pagePath: "/home", totalUsers: 100 },
-      { pagePath: "/about", totalUsers: 50 },
+      { page: "/home", clicks: 100, impressions: 1000 },
+      { page: "/about", clicks: 50, impressions: 500 },
     ];
 
-    mockRunGA4.mockResolvedValue(mockResult);
+    mockRunGSC.mockResolvedValue(mockResult);
 
     const result = await runQuery(answers, config);
 
     expect(result).toEqual(mockResult);
-    expect(mockRunGA4).toHaveBeenCalledWith(
+    expect(mockRunGSC).toHaveBeenCalledWith(
       expect.objectContaining({
-        source: "ga4",
-        metrics: ["totalUsers"],
-        dimensions: ["pagePath"],
-        orderBys: [{ metric: "totalUsers", desc: true }],
+        source: "searchconsole",
+        metrics: ["clicks", "impressions"],
+        dimensions: ["page"],
+        orderBys: [{ metric: "clicks", desc: true }],
         limit: 50,
         filters: [],
       }),
@@ -78,7 +78,7 @@ describe("Query Runner", () => {
     const answers = {
       source: "bigquery",
       mode: "preset",
-      preset: "bq-events-sample",
+      preset: "bq-gsc-sample",
       dateRangeType: "last7",
     };
 
@@ -88,11 +88,11 @@ describe("Query Runner", () => {
       },
       presets: [
         {
-          id: "bq-events-sample",
+          id: "bq-gsc-sample",
           source: "bigquery",
-          metrics: ["event_count"],
-          dimensions: ["event_name"],
-          orderBys: [{ metric: "event_count", desc: true }],
+          metrics: ["clicks", "impressions"],
+          dimensions: ["query", "page"],
+          orderBys: [{ metric: "clicks", desc: true }],
           limit: 100,
           filters: [],
         },
@@ -101,8 +101,8 @@ describe("Query Runner", () => {
     };
 
     const mockResult = [
-      { event_name: "page_view", event_count: 1000 },
-      { event_name: "click", event_count: 500 },
+      { query: "example search", page: "/home", clicks: 100, impressions: 1000 },
+      { query: "another search", page: "/about", clicks: 50, impressions: 500 },
     ];
 
     mockRunBQ.mockResolvedValue(mockResult);
@@ -113,9 +113,9 @@ describe("Query Runner", () => {
     expect(mockRunBQ).toHaveBeenCalledWith(
       expect.objectContaining({
         source: "bigquery",
-        metrics: ["event_count"],
-        dimensions: ["event_name"],
-        orderBys: [{ metric: "event_count", desc: true }],
+        metrics: ["clicks", "impressions"],
+        dimensions: ["query", "page"],
+        orderBys: [{ metric: "clicks", desc: true }],
         limit: 100,
         filters: [],
       }),
@@ -125,10 +125,10 @@ describe("Query Runner", () => {
 
   it("should handle ad-hoc queries", async () => {
     const answers = {
-      source: "ga4",
+      source: "searchconsole",
       mode: "adhoc",
-      metrics: ["sessions", "totalUsers"],
-      dimensions: ["date", "pagePath"],
+      metrics: ["clicks", "impressions"],
+      dimensions: ["date", "page"],
       dateRangeType: "last7",
       limit: 1000,
       orderBys: [],
@@ -137,25 +137,25 @@ describe("Query Runner", () => {
 
     const config = {
       sources: {
-        ga4: { enabled: true },
+        searchconsole: { enabled: true },
       },
       limits: { maxRows: 100000 },
     };
 
     const mockResult = [
-      { date: "2024-01-01", pagePath: "/home", sessions: 100, totalUsers: 50 },
+      { date: "2024-01-01", page: "/home", clicks: 100, impressions: 1000 },
     ];
 
-    mockRunGA4.mockResolvedValue(mockResult);
+    mockRunGSC.mockResolvedValue(mockResult);
 
     const result = await runQuery(answers, config);
 
     expect(result).toEqual(mockResult);
-    expect(mockRunGA4).toHaveBeenCalledWith(
+    expect(mockRunGSC).toHaveBeenCalledWith(
       expect.objectContaining({
-        source: "ga4",
-        metrics: ["sessions", "totalUsers"],
-        dimensions: ["date", "pagePath"],
+        source: "searchconsole",
+        metrics: ["clicks", "impressions"],
+        dimensions: ["date", "page"],
         limit: 1000,
       }),
       config
@@ -164,9 +164,9 @@ describe("Query Runner", () => {
 
   it("should apply limit caps from config", async () => {
     const answers = {
-      source: "ga4",
+      source: "searchconsole",
       mode: "adhoc",
-      metrics: ["sessions"],
+      metrics: ["clicks"],
       dimensions: ["date"],
       dateRangeType: "last7",
       limit: 200000, // Exceeds maxRows
@@ -176,17 +176,17 @@ describe("Query Runner", () => {
 
     const config = {
       sources: {
-        ga4: { enabled: true },
+        searchconsole: { enabled: true },
       },
       limits: { maxRows: 100000 },
     };
 
     const mockResult = [];
-    mockRunGA4.mockResolvedValue(mockResult);
+    mockRunGSC.mockResolvedValue(mockResult);
 
     await runQuery(answers, config);
 
-    expect(mockRunGA4).toHaveBeenCalledWith(
+    expect(mockRunGSC).toHaveBeenCalledWith(
       expect.objectContaining({
         limit: 100000, // Should be capped
       }),
@@ -204,13 +204,13 @@ describe("Query Runner", () => {
 
     const config = {
       sources: {
-        ga4: { enabled: true },
+        searchconsole: { enabled: true },
       },
       presets: [
         {
           id: "test",
           source: "unsupported",
-          metrics: ["sessions"],
+          metrics: ["clicks"],
           dimensions: ["date"],
           orderBys: [],
           limit: 100,
@@ -227,7 +227,7 @@ describe("Query Runner", () => {
 
   it("should throw error for missing preset", async () => {
     const answers = {
-      source: "ga4",
+      source: "searchconsole",
       mode: "preset",
       preset: "missing-preset",
       dateRangeType: "last7",
@@ -235,7 +235,7 @@ describe("Query Runner", () => {
 
     const config = {
       sources: {
-        ga4: { enabled: true },
+        searchconsole: { enabled: true },
       },
       presets: [],
       limits: { maxRows: 100000 },
@@ -248,7 +248,7 @@ describe("Query Runner", () => {
 
   it("should validate query parameters", async () => {
     const answers = {
-      source: "ga4",
+      source: "searchconsole",
       mode: "adhoc",
       metrics: [], // Empty metrics should fail
       dimensions: ["date"],
@@ -260,7 +260,7 @@ describe("Query Runner", () => {
 
     const config = {
       sources: {
-        ga4: { enabled: true },
+        searchconsole: { enabled: true },
       },
       limits: { maxRows: 100000 },
     };

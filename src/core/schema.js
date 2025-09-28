@@ -25,7 +25,7 @@
 
 /**
  * @typedef {Object} NormalizedQuery
- * @property {string} source - "ga4" | "bigquery"
+ * @property {string} source - "searchconsole" | "bigquery"
  * @property {DateRange} dateRange - Date range for the query
  * @property {string[]} metrics - Array of metric names
  * @property {string[]} dimensions - Array of dimension names
@@ -41,50 +41,34 @@
  * @property {Object} metadata - Additional metadata about the query
  */
 
-// Common GA4 metrics
-export const GA4_METRICS = {
-  sessions: "sessions",
-  totalUsers: "totalUsers",
-  newUsers: "newUsers",
-  activeUsers: "activeUsers",
-  averageSessionDuration: "averageSessionDuration",
-  eventCount: "eventCount",
-  bounceRate: "bounceRate",
-  conversionRate: "conversionRate",
-  revenue: "totalRevenue",
+// Common GSC metrics
+export const GSC_METRICS = {
+  clicks: "clicks",
+  impressions: "impressions",
+  ctr: "ctr",
+  position: "position",
 };
 
-// Common GA4 dimensions
-export const GA4_DIMENSIONS = {
+// Common GSC dimensions
+export const GSC_DIMENSIONS = {
+  query: "query",
+  page: "page",
+  country: "country",
+  device: "device",
+  searchAppearance: "searchAppearance",
   date: "date",
-  pagePath: "pagePath",
-  pageTitle: "pageTitle",
-  firstUserSource: "firstUserSource",
-  firstUserMedium: "firstUserMedium",
-  country: "country",
-  city: "city",
-  deviceCategory: "deviceCategory",
-  operatingSystem: "operatingSystem",
-  browser: "browser",
-  eventName: "eventName",
-  customEventParameter: "customEventParameter",
 };
 
-// Common BigQuery fields (for GA4 export)
+// Common BigQuery fields (for GSC data)
 export const BQ_FIELDS = {
-  event_date: "event_date",
-  event_name: "event_name",
-  page_location: "page_location",
-  page_title: "page_title",
-  user_pseudo_id: "user_pseudo_id",
-  session_id: "session_id",
+  date: "date",
+  query: "query",
+  page: "page",
   country: "country",
-  city: "city",
-  device_category: "device_category",
-  operating_system: "operating_system",
-  browser: "browser",
-  source: "source",
-  medium: "medium",
-  campaign: "campaign",
-  event_count: "event_count",
+  device: "device",
+  search_appearance: "search_appearance",
+  clicks: "clicks",
+  impressions: "impressions",
+  ctr: "ctr",
+  position: "position",
 };

@@ -82,8 +82,8 @@ describe("BigQuery Data Source", () => {
   it("should handle BigQuery API errors", async () => {
     const query = {
       dateRange: { start: "2024-01-01", end: "2024-01-31" },
-      metrics: ["event_count"],
-      dimensions: ["event_name"],
+      metrics: ["clicks"],
+      dimensions: ["query"],
       limit: 100,
       orderBys: [],
       filters: [],
@@ -93,7 +93,7 @@ describe("BigQuery Data Source", () => {
       sources: {
         bigquery: {
           projectId: "test-project",
-          dataset: "analytics_123456789",
+          dataset: "gsc_data",
           location: "US",
         },
       },
@@ -112,8 +112,8 @@ describe("BigQuery Data Source", () => {
   it("should handle missing project ID", async () => {
     const query = {
       dateRange: { start: "2024-01-01", end: "2024-01-31" },
-      metrics: ["event_count"],
-      dimensions: ["event_name"],
+      metrics: ["clicks"],
+      dimensions: ["query"],
       limit: 100,
       orderBys: [],
       filters: [],
@@ -123,7 +123,7 @@ describe("BigQuery Data Source", () => {
       sources: {
         bigquery: {
           projectId: "",
-          dataset: "analytics_123456789",
+          dataset: "gsc_data",
           location: "US",
         },
       },
@@ -137,8 +137,8 @@ describe("BigQuery Data Source", () => {
   it("should handle missing dataset", async () => {
     const query = {
       dateRange: { start: "2024-01-01", end: "2024-01-31" },
-      metrics: ["event_count"],
-      dimensions: ["event_name"],
+      metrics: ["clicks"],
+      dimensions: ["query"],
       limit: 100,
       orderBys: [],
       filters: [],
@@ -162,16 +162,16 @@ describe("BigQuery Data Source", () => {
   it("should build SQL with filters correctly", async () => {
     const query = {
       dateRange: { start: "2024-01-01", end: "2024-01-31" },
-      metrics: ["event_count"],
-      dimensions: ["event_name"],
+      metrics: ["clicks"],
+      dimensions: ["query"],
       limit: 100,
       orderBys: [],
       filters: [
         {
           type: "dimension",
-          field: "event_name",
+          field: "query",
           op: "eq",
-          value: "page_view",
+          value: "example search",
         },
       ],
     };
@@ -180,7 +180,7 @@ describe("BigQuery Data Source", () => {
       sources: {
         bigquery: {
           projectId: "test-project",
-          dataset: "analytics_123456789",
+          dataset: "gsc_data",
           location: "US",
         },
       },
@@ -195,7 +195,7 @@ describe("BigQuery Data Source", () => {
     await runBQ(query, config);
 
     expect(mockCreateQueryJob).toHaveBeenCalledWith({
-      query: expect.stringContaining("AND `event_name` = @p_event_name"),
+      query: expect.stringContaining("AND `query` = @p_query"),
       params: expect.objectContaining({
         start_date: "2024-01-01",
         end_date: "2024-01-31",
@@ -207,12 +207,12 @@ describe("BigQuery Data Source", () => {
   it("should build SQL with order by correctly", async () => {
     const query = {
       dateRange: { start: "2024-01-01", end: "2024-01-31" },
-      metrics: ["event_count"],
-      dimensions: ["event_name"],
+      metrics: ["clicks"],
+      dimensions: ["query"],
       limit: 100,
       orderBys: [
-        { metric: "event_count", desc: true },
-        { dimension: "event_name", desc: false },
+        { metric: "clicks", desc: true },
+        { dimension: "query", desc: false },
       ],
       filters: [],
     };
@@ -221,7 +221,7 @@ describe("BigQuery Data Source", () => {
       sources: {
         bigquery: {
           projectId: "test-project",
-          dataset: "analytics_123456789",
+          dataset: "gsc_data",
           location: "US",
         },
       },
@@ -236,7 +236,7 @@ describe("BigQuery Data Source", () => {
     await runBQ(query, config);
 
     expect(mockCreateQueryJob).toHaveBeenCalledWith({
-      query: expect.stringContaining("ORDER BY `event_count` DESC, `event_name` ASC"),
+      query: expect.stringContaining("ORDER BY `clicks` DESC, `query` ASC"),
       params: expect.objectContaining({
         start_date: "2024-01-01",
         end_date: "2024-01-31",

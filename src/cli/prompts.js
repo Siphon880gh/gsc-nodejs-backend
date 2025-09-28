@@ -3,7 +3,10 @@ import chalk from "chalk";
 export async function buildPrompts(cfg) {
   const enabledSources = Object.entries(cfg.sources)
     .filter(([, v]) => v.enabled)
-    .map(([k]) => ({ name: k.toUpperCase(), value: k }));
+    .map(([k, v]) => ({ 
+      name: k === 'bigquery' ? `${k.toUpperCase()} (Optional)` : k.toUpperCase(), 
+      value: k 
+    }));
 
   if (enabledSources.length === 0) {
     throw new Error("No data sources are enabled. Check your configuration.");
@@ -12,9 +15,20 @@ export async function buildPrompts(cfg) {
   const base = [
     {
       type: "list",
+      name: "action",
+      message: "What would you like to do?",
+      choices: [
+        { name: "Run a query", value: "query" },
+        { name: "Authenticate with Google", value: "auth" },
+        { name: "List available sites", value: "sites" },
+      ],
+    },
+    {
+      type: "list",
       name: "source",
       message: "Select data source",
       choices: enabledSources,
+      when: (answers) => answers.action === "query",
     },
     {
       type: "list",
@@ -24,6 +38,7 @@ export async function buildPrompts(cfg) {
         { name: "Run a preset", value: "preset" },
         { name: "Ad-hoc query", value: "adhoc" },
       ],
+      when: (answers) => answers.action === "query",
     },
   ];
 

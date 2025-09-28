@@ -10,6 +10,7 @@ yarn-error.log*
 .env.development.local
 .env.test.local
 .env.production.local
+env/*
 
 # Output files
 .out/
@@ -20,6 +21,7 @@ secrets/
 *.json
 !package.json
 !package-lock.json
+.oauth_tokens.json
 
 # IDE files
 .vscode/

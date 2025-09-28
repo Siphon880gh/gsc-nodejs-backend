@@ -1,11 +1,10 @@
-import runGA4 from "../datasources/ga4.js";
 import runBQ from "../datasources/bigquery.js";
 import runGSC from "../datasources/searchconsole.js";
 import { validateQuery } from "../cli/validators.js";
 
 /**
  * @typedef NormalizedQuery
- * @property {string} source - "searchconsole" | "ga4" | "bigquery"
+ * @property {string} source - "searchconsole" | "bigquery"
  * @property {Object} dateRange - {start: string, end: string}
  * @property {string[]} metrics - Array of metric names
  * @property {string[]} dimensions - Array of dimension names
@@ -26,8 +25,6 @@ export async function runQuery(answers, cfg) {
   // Route to appropriate data source
   if (normalized.source === "searchconsole") {
     return runGSC(normalized, cfg);
-  } else if (normalized.source === "ga4") {
-    return runGA4(normalized, cfg);
   } else if (normalized.source === "bigquery") {
     return runBQ(normalized, cfg);
   } else {
