@@ -2,37 +2,66 @@
 
 ## Overview
 
-A Node.js CLI tool for querying Google Search Console data with OAuth2 authentication and optional BigQuery integration. Provides interactive querying with preset and ad-hoc modes.
+A Node.js application for querying Google Search Console data with OAuth2 authentication and optional BigQuery integration. Provides both interactive CLI and REST API interfaces with multi-user support and JWT authentication.
 
 ## Tech Stack
 
 - **Runtime**: Node.js 18+ with ES modules
-- **Authentication**: OAuth2 with Google APIs client library
+- **Authentication**: OAuth2 with Google APIs client library + JWT for API
 - **Database**: SQLite with better-sqlite3 for user data storage
 - **CLI Interface**: Inquirer.js for interactive prompts
+- **API Server**: Express.js with JWT authentication middleware
 - **Data Sources**: Google Search Console API, BigQuery API
 - **Output**: Table (console), JSON, CSV formats with smart sorting
+- **Security**: JWT tokens with configurable expiration and session management
 
 ## Architecture
 
 ```
 src/
+├── api/           # REST API server and JWT authentication
 ├── cli/           # CLI interface and prompts
 ├── core/          # Query execution and presets
 ├── datasources/   # API integrations (GSC, BigQuery)
 └── utils/         # Configuration and utilities
 ```
 
+### Dual Interface Support
+
+The application now supports both CLI and REST API interfaces:
+
+- **CLI Interface**: Interactive command-line tool for direct usage
+- **REST API**: HTTP endpoints for integration with other applications
+- **JWT Authentication**: Secure token-based authentication for production use
+- **Multi-User Support**: User isolation with separate authentication and data storage
+
 ## Key Files
 
+### CLI Interface
 - **`src/cli/index.js`** (248 lines) - Main CLI entry point with pagination and enhanced UX
-- **`src/datasources/searchconsole.js`** (361 lines) - GSC API with client-side sorting and OAuth2 requests
 - **`src/cli/prompts.js`** (354 lines) - Interactive prompts with advanced sorting and column selection
 - **`src/cli/renderers.js`** (212 lines) - Output rendering with pagination, smart sorting and number formatting
+
+### API Server
+- **`src/api/server.js`** (60 lines) - Main API server with user-based routing
+- **`src/api/server-jwt.js`** (60 lines) - JWT-based API server for secure authentication
+- **`src/api/jwt-routes.js`** (710 lines) - JWT authentication routes and middleware
+- **`src/api/auth-middleware.js`** (162 lines) - JWT authentication middleware
+
+### Data Sources & Core
+- **`src/datasources/searchconsole.js`** (361 lines) - GSC API with client-side sorting and OAuth2 requests
 - **`src/core/query-runner.js`** (96 lines) - Query execution with preset/ad-hoc handling
+- **`src/core/presets.js`** - Preset query definitions
+- **`src/core/schema.js`** - Data schema definitions
+
+### Utilities
 - **`src/utils/site-manager.js`** (111 lines) - Site selection and SQLite storage utilities
 - **`src/utils/auth-helper.js`** (33 lines) - Reusable authentication utilities
 - **`src/utils/database.js`** (114 lines) - SQLite database operations for user data
+- **`src/utils/config.js`** - Configuration utilities
+- **`src/utils/logger.js`** - Logging utilities
+
+### Configuration & Database
 - **`config.js`** (146 lines) - Configuration with impressions-based presets
 - **`callback.html`** (143 lines) - OAuth2 callback page
 - **`gsc_auth.db`** - SQLite database for user authentication and site data
@@ -255,6 +284,10 @@ export async function ensureAuthentication(cfg) {
 
 **Smart Sorting System**: See [context-sorting.md](./context-sorting.md) for complete sorting system details.
 
+**API Endpoints**: See [context-api.md](./context-api.md) for complete API documentation and JWT authentication details.
+
+**Site Selection**: See [context-site-selection.md](./context-site-selection.md) for complete site selection system details.
+
 ## Configuration
 
 Environment variables in `.env` (now optional with site selection):
@@ -379,7 +412,61 @@ async function displayTableWithPagination(rows) {
 - **Performance**: No memory issues with large result sets
 - **Clean Interface**: Screen clearing prevents visual clutter
 
+## API Endpoints
+
+### REST API Server (`src/api/server.js` - 60 lines)
+
+The application now includes a full REST API that provides all CLI functionality as HTTP endpoints:
+
+```javascript
+// Main API server with user-based routing
+const express = require('express');
+const app = express();
+
+// User-based routing: /api/{userId}/endpoint
+app.get('/api/:userId/status', getUserStatus);
+app.post('/api/:userId/auth', authenticateUser);
+app.get('/api/:userId/sites', listUserSites);
+app.post('/api/:userId/query/adhoc', runAdhocQuery);
+app.post('/api/:userId/query/preset', runPresetQuery);
+```
+
+**Key Features:**
+- **Multi-User Support**: Each user identified by `userId` parameter
+- **Complete CLI Parity**: All CLI functions available as REST endpoints
+- **User Isolation**: Separate authentication and site data per user
+- **Flexible Output**: JSON, CSV, and table formats
+
+### JWT Authentication System (`src/api/server-jwt.js` - 60 lines)
+
+Secure JWT-based authentication system for production use:
+
+```javascript
+// JWT authentication flow
+app.post('/api/auth/login', loginUser);        // Returns JWT token
+app.get('/api/status', authenticateJWT, getUserStatus);
+app.post('/api/query/adhoc', authenticateJWT, runAdhocQuery);
+```
+
+**Security Features:**
+- **JWT Tokens**: Secure token-based authentication
+- **Token Expiry**: Configurable token expiration (default: 24h)
+- **Session Management**: Automatic cleanup of expired sessions
+- **User Isolation**: Each user's data completely isolated
+
+### API Documentation
+
+- **Standard API**: [API-DOCUMENTATION.md](./API-DOCUMENTATION.md) - User-based routing
+- **JWT API**: [API-DOCUMENTATION-JWT.md](./API-DOCUMENTATION-JWT.md) - JWT authentication
+
 ## Recent Updates
+
+### API Endpoints (v3.0)
+- ✅ **REST API Server** - Complete REST API with all CLI functionality
+- ✅ **JWT Authentication** - Secure token-based authentication system
+- ✅ **Multi-User Support** - User isolation with separate authentication and data
+- ✅ **API Documentation** - Comprehensive documentation for both API versions
+- ✅ **Production Ready** - JWT-based authentication for production deployment
 
 ### Enhanced UX and Pagination (v2.4)
 - ✅ **Smart Pagination** - Table output now supports pagination with 50 rows per page

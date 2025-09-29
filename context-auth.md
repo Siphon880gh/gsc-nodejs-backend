@@ -2,7 +2,7 @@
 
 ## Overview
 
-Comprehensive OAuth2 authentication system with SQLite database storage for scalable user data management. Uses direct API requests that bypass Google APIs client library issues and provides user-isolated authentication with consistent patterns across all CLI functions.
+Comprehensive authentication system supporting both OAuth2 for CLI and JWT for API endpoints. Features SQLite database storage for scalable user data management, direct API requests that bypass Google APIs client library issues, and user-isolated authentication with consistent patterns across all interfaces.
 
 ## Authentication Helper (`src/utils/auth-helper.js` - 32 lines)
 
@@ -408,10 +408,144 @@ try {
 - **Token Expiry**: Automatic refresh prevents long-lived tokens
 - **Direct Requests**: Bypasses Google APIs client library security issues
 
+## JWT Authentication System
+
+### JWT Implementation (`src/api/jwt-routes.js` - 710 lines)
+
+Secure token-based authentication for API endpoints:
+
+```javascript
+// JWT login endpoint
+app.post('/api/auth/login', async (req, res) => {
+  const { userId } = req.body;
+  
+  try {
+    // Authenticate with Google OAuth2
+    const auth = await getOAuth2Client(cfg);
+    await auth.getAccessToken();
+    
+    // Generate JWT token
+    const token = jwt.sign({ userId }, JWT_SECRET, { expiresIn: '24h' });
+    
+    // Store session in database
+    await storeUserSession(userId, token);
+    
+    res.json({
+      success: true,
+      token,
+      userId,
+      expiresIn: '24h'
+    });
+  } catch (error) {
+    res.status(401).json({
+      success: false,
+      error: 'Authentication failed'
+    });
+  }
+});
+```
+
+### JWT Middleware (`src/api/auth-middleware.js` - 162 lines)
+
+Secure token validation and user authentication:
+
+```javascript
+// JWT authentication middleware
+export function authenticateJWT(req, res, next) {
+  const authHeader = req.headers['authorization'];
+  const token = authHeader && authHeader.split(' ')[1];
+  
+  if (!token) {
+    return res.status(401).json({ 
+      success: false, 
+      error: 'Access token required' 
+    });
+  }
+  
+  try {
+    const decoded = jwt.verify(token, JWT_SECRET);
+    req.userId = decoded.userId;
+    next();
+  } catch (error) {
+    return res.status(403).json({ 
+      success: false, 
+      error: 'Invalid or expired token' 
+    });
+  }
+}
+```
+
+### JWT Session Management
+
+**Database Schema:**
+```sql
+CREATE TABLE user_sessions (
+  id INTEGER PRIMARY KEY AUTOINCREMENT,
+  user_id TEXT NOT NULL,
+  token_hash TEXT NOT NULL,
+  expires_at DATETIME NOT NULL,
+  created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+  updated_at DATETIME DEFAULT CURRENT_TIMESTAMP
+);
+```
+
+**Session Storage:**
+```javascript
+// Store JWT session
+async function storeUserSession(userId, token) {
+  const tokenHash = crypto.createHash('sha256').update(token).digest('hex');
+  const expiresAt = new Date(Date.now() + 24 * 60 * 60 * 1000); // 24 hours
+  
+  await db.run(`
+    INSERT INTO user_sessions (user_id, token_hash, expires_at)
+    VALUES (?, ?, ?)
+  `, [userId, tokenHash, expiresAt.toISOString()]);
+}
+```
+
+**Session Validation:**
+```javascript
+// Validate JWT session
+async function validateUserSession(userId, token) {
+  const tokenHash = crypto.createHash('sha256').update(token).digest('hex');
+  
+  const session = await db.get(`
+    SELECT * FROM user_sessions 
+    WHERE user_id = ? AND token_hash = ? AND expires_at > ?
+    ORDER BY created_at DESC LIMIT 1
+  `, [userId, tokenHash, new Date().toISOString()]);
+  
+  return session !== undefined;
+}
+```
+
+### JWT Security Features
+
+- **Token Signing**: Tokens signed with secret key
+- **Token Expiry**: Configurable expiration (default: 24h)
+- **Session Management**: Automatic cleanup of expired sessions
+- **Token Hashing**: Tokens hashed before database storage
+- **User Isolation**: Each user's sessions completely isolated
+
+### JWT vs OAuth2 Authentication
+
+| Feature | OAuth2 (CLI) | JWT (API) |
+|---------|--------------|-----------|
+| **Use Case** | Interactive CLI | REST API |
+| **Token Type** | Google OAuth2 | JWT |
+| **Storage** | SQLite database | SQLite database |
+| **Expiry** | Google controlled | Configurable |
+| **User Isolation** | ✅ | ✅ |
+| **Session Management** | Manual | Automatic |
+| **Security** | Google OAuth2 | JWT + Hashing |
+
 ## Benefits
 
+- **Dual Authentication**: OAuth2 for CLI, JWT for API
 - **Consistent Authentication**: Same pattern used across all functions
 - **Reliable Requests**: Direct OAuth2 requests bypass client library issues
 - **Fresh Tokens**: Ensures authentication is always current
 - **Error Handling**: Comprehensive error management and user guidance
 - **Reusable Code**: Single source of truth for authentication logic
+- **Production Ready**: JWT authentication for production API deployment
+- **User Isolation**: Complete separation of user data and authentication
