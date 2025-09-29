@@ -10,6 +10,10 @@
   "scripts": {
     "start": "node src/cli/index.js",
     "dev": "node --watch src/cli/index.js",
+    "api": "node src/api/server.js",
+    "api:dev": "node --watch src/api/server.js",
+    "api:jwt": "node src/api/server-jwt.js",
+    "api:jwt:dev": "node --watch src/api/server-jwt.js",
     "test": "vitest run",
     "test:setup": "node test-setup.js",
     "lint": "eslint .",
@@ -28,13 +32,17 @@
   "dependencies": {
     "@google-cloud/bigquery": "^7.5.0",
     "@googleapis/searchconsole": "^3.0.0",
+    "bcryptjs": "^2.4.3",
     "better-sqlite3": "^12.4.1",
     "chalk": "^5.3.0",
     "commander": "^11.1.0",
+    "cors": "^2.8.5",
     "csv-stringify": "^6.4.4",
     "dotenv": "^16.3.1",
+    "express": "^4.18.2",
     "googleapis": "^160.0.0",
     "inquirer": "^9.3.8",
+    "jsonwebtoken": "^9.0.2",
     "open": "^10.2.0",
     "ora": "^7.0.1"
   },
