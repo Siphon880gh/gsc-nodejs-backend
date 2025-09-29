@@ -62,11 +62,11 @@ export default async function runGSC(query, cfg, auth = null) {
         });
       }
       
-      // Add metrics (clicks, impressions, ctr, position)
-      if (row.clicks !== undefined) result.clicks = row.clicks;
-      if (row.impressions !== undefined) result.impressions = row.impressions;
-      if (row.ctr !== undefined) result.ctr = row.ctr;
-      if (row.position !== undefined) result.position = row.position;
+      // Add only the selected metrics
+      if (query.metrics.includes('clicks') && row.clicks !== undefined) result.clicks = row.clicks;
+      if (query.metrics.includes('impressions') && row.impressions !== undefined) result.impressions = row.impressions;
+      if (query.metrics.includes('ctr') && row.ctr !== undefined) result.ctr = row.ctr;
+      if (query.metrics.includes('position') && row.position !== undefined) result.position = row.position;
       
       return result;
     });
