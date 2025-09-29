@@ -4,6 +4,8 @@ import { OAuth2Client } from "google-auth-library";
 import { readFileSync } from "fs";
 import { join } from "path";
 import open from "open";
+import { getTokensForUser, storeTokensForUser } from '../utils/database.js';
+import config from '../../config.js';
 
 export default async function runGSC(query, cfg, auth = null) {
   const gscConfig = cfg.sources.searchconsole;
@@ -141,21 +143,28 @@ export async function getOAuth2Client(gscConfig) {
     credentials.web.redirect_uris[0]
   );
 
-  // Check if we have stored tokens
-  const tokenPath = join(process.cwd(), '.oauth_tokens.json');
+  // Check if we have stored tokens in database
+  const userId = config.userId;
   let tokens;
   
   try {
-    const tokenContent = readFileSync(tokenPath, 'utf8');
-    tokens = JSON.parse(tokenContent);
-    oauth2Client.setCredentials(tokens);
-    
-    // Test if tokens are still valid
-    try {
-      await oauth2Client.getAccessToken();
-      return oauth2Client;
-    } catch (error) {
-      console.log(chalk.yellow("Stored tokens expired, refreshing..."));
+    tokens = getTokensForUser(userId);
+    if (tokens) {
+      oauth2Client.setCredentials({
+        access_token: tokens.access_token,
+        refresh_token: tokens.refresh_token,
+        scope: tokens.scope,
+        token_type: tokens.token_type,
+        expiry_date: tokens.expiry_date
+      });
+      
+      // Test if tokens are still valid
+      try {
+        await oauth2Client.getAccessToken();
+        return oauth2Client;
+      } catch (error) {
+        console.log(chalk.yellow("Stored tokens expired, refreshing..."));
+      }
     }
   } catch (error) {
     console.log(chalk.blue("No stored tokens found, starting OAuth2 flow..."));
@@ -190,10 +199,9 @@ export async function getOAuth2Client(gscConfig) {
   
   oauth2Client.setCredentials(newTokens);
   
-  // Store tokens for future use
-  const { writeFileSync } = await import('fs');
-  writeFileSync(tokenPath, JSON.stringify(newTokens, null, 2));
-  console.log(chalk.green("Authentication successful! Tokens saved."));
+  // Store tokens in database for future use
+  storeTokensForUser(userId, newTokens);
+  console.log(chalk.green("Authentication successful! Tokens saved to database."));
   
   return oauth2Client;
 }

@@ -1,5 +1,8 @@
 // config.js
 export default {
+  // User configuration for database storage
+  userId: 1,
+  
   // Which data sources are enabled
   sources: {
     searchconsole: {

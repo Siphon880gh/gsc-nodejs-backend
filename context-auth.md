@@ -178,52 +178,114 @@ const code = await waitForCallback();
 const { tokens: newTokens } = await oauth2Client.getToken(code);
 ```
 
-## Files Created During Authentication
+## Database Storage (SQLite)
 
-### 1. OAuth2 Tokens (`.oauth_tokens.json`)
+### User Configuration
 
-**Location**: Project root directory  
-**Purpose**: Stores OAuth2 access and refresh tokens  
-**Content**:
+**Location**: `config.js`  
+**Purpose**: Configure user ID for database storage  
+**Configuration**:
 
-```json
-{
-  "access_token": "ya29.a0AQQ_BDQXhCzEe...",
-  "refresh_token": "1//065QYP8UqCUtHCgYIARAAGAYSNgF...",
-  "scope": "https://www.googleapis.com/auth/webmasters.readonly",
-  "token_type": "Bearer",
-  "expiry_date": 1759059731582
+```javascript
+// config.js
+export default {
+  // User configuration
+  userId: 1, // Configure user ID for database storage
+  
+  sources: {
+    searchconsole: {
+      enabled: true,
+      // ... other config
+    }
+  }
 }
 ```
 
-**Creation Process**:
-```javascript
-// Store tokens for future use
-const { writeFileSync } = await import('fs');
-writeFileSync(tokenPath, JSON.stringify(newTokens, null, 2));
+### Database Schema
+
+**Database File**: `gsc_auth.db` (SQLite)  
+**Purpose**: Store OAuth2 tokens and site selections per user  
+**Tables**:
+
+#### 1. OAuth2 Tokens Table (`oauth_tokens`)
+
+```sql
+CREATE TABLE oauth_tokens (
+  id INTEGER PRIMARY KEY AUTOINCREMENT,
+  user_id INTEGER NOT NULL,
+  access_token TEXT NOT NULL,
+  refresh_token TEXT,
+  scope TEXT NOT NULL,
+  token_type TEXT DEFAULT 'Bearer',
+  expiry_date INTEGER,
+  created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+  updated_at DATETIME DEFAULT CURRENT_TIMESTAMP
+);
 ```
 
-### 2. Site Selection (`.selected_site.json`)
-
-**Location**: Project root directory  
-**Purpose**: Stores the user's selected Search Console site  
-**Content**:
-
-```json
-{
-  "siteUrl": "https://example.com/",
-  "selectedAt": "2024-01-15T10:30:00.000Z"
-}
+**Sample Data**:
+```sql
+INSERT INTO oauth_tokens (user_id, access_token, refresh_token, scope, expiry_date) 
+VALUES (1, 'ya29.a0AQQ_BDQXhCzEe...', '1//065QYP8UqCUtHCgYIARAAGAYSNgF...', 
+        'https://www.googleapis.com/auth/webmasters.readonly', 1759059731582);
 ```
 
-**Creation Process**:
+#### 2. Site Selection Table (`selected_sites`)
+
+```sql
+CREATE TABLE selected_sites (
+  id INTEGER PRIMARY KEY AUTOINCREMENT,
+  user_id INTEGER NOT NULL,
+  site_url TEXT NOT NULL,
+  selected_at DATETIME DEFAULT CURRENT_TIMESTAMP
+);
+```
+
+**Sample Data**:
+```sql
+INSERT INTO selected_sites (user_id, site_url) 
+VALUES (1, 'https://example.com/');
+```
+
+### Database Operations
+
+**Token Storage**:
 ```javascript
-// Save selected site configuration
-const config = {
-  siteUrl,
-  selectedAt: new Date().toISOString()
-};
-writeFileSync(SITE_CONFIG_PATH, JSON.stringify(config, null, 2));
+// Store OAuth2 tokens in database
+await db.run(`
+  INSERT OR REPLACE INTO oauth_tokens 
+  (user_id, access_token, refresh_token, scope, token_type, expiry_date)
+  VALUES (?, ?, ?, ?, ?, ?)
+`, [userId, tokens.access_token, tokens.refresh_token, 
+     tokens.scope, tokens.token_type, tokens.expiry_date]);
+```
+
+**Site Selection Storage**:
+```javascript
+// Save selected site to database
+await db.run(`
+  INSERT OR REPLACE INTO selected_sites 
+  (user_id, site_url, selected_at)
+  VALUES (?, ?, ?)
+`, [userId, siteUrl, new Date().toISOString()]);
+```
+
+**Token Retrieval**:
+```javascript
+// Get tokens for user
+const tokenRow = await db.get(
+  'SELECT * FROM oauth_tokens WHERE user_id = ? ORDER BY updated_at DESC LIMIT 1',
+  [userId]
+);
+```
+
+**Site Retrieval**:
+```javascript
+// Get selected site for user
+const siteRow = await db.get(
+  'SELECT * FROM selected_sites WHERE user_id = ? ORDER BY selected_at DESC LIMIT 1',
+  [userId]
+);
 ```
 
 ### 3. OAuth2 Callback Server
@@ -247,21 +309,72 @@ writeFileSync(SITE_CONFIG_PATH, JSON.stringify(config, null, 2));
 - Automatic window closing
 - Fallback communication methods
 
-## Token Storage & Management
+## Database Management & Security
 
 ### Token Lifecycle
 
-1. **Initial Auth**: Browser consent → authorization code → tokens
-2. **Token Refresh**: Automatic refresh using refresh_token
-3. **Token Validation**: Check expiry before API calls
-4. **Token Storage**: Persistent storage in `.oauth_tokens.json`
+1. **Initial Auth**: Browser consent → authorization code → tokens → database storage
+2. **Token Refresh**: Automatic refresh using refresh_token → database update
+3. **Token Validation**: Check expiry before API calls → database query
+4. **User Isolation**: Each user's tokens stored separately by user_id
 
-### File Permissions & Security
+### Database Security
 
-- **Token files**: Created with default file permissions
-- **Sensitive data**: Contains access tokens and refresh tokens
-- **Local storage**: Files stored in project root directory
-- **No encryption**: Tokens stored in plain JSON format
+- **SQLite Database**: `gsc_auth.db` in project root directory
+- **User Isolation**: Tokens and sites stored per user_id
+- **No Encryption**: Tokens stored in plain text (SQLite limitation)
+- **File Permissions**: Database file uses default system permissions
+- **Backup Considerations**: Database file should be included in backup strategies
+
+### Database Initialization
+
+```javascript
+// Initialize SQLite database
+import Database from 'better-sqlite3';
+
+const db = new Database('gsc_auth.db');
+
+// Create tables if they don't exist
+db.exec(`
+  CREATE TABLE IF NOT EXISTS oauth_tokens (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    user_id INTEGER NOT NULL,
+    access_token TEXT NOT NULL,
+    refresh_token TEXT,
+    scope TEXT NOT NULL,
+    token_type TEXT DEFAULT 'Bearer',
+    expiry_date INTEGER,
+    created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+    updated_at DATETIME DEFAULT CURRENT_TIMESTAMP
+  );
+  
+  CREATE TABLE IF NOT EXISTS selected_sites (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    user_id INTEGER NOT NULL,
+    site_url TEXT NOT NULL,
+    selected_at DATETIME DEFAULT CURRENT_TIMESTAMP
+  );
+`);
+```
+
+### User-Based Operations
+
+```javascript
+// Get user ID from config
+const userId = config.userId;
+
+// Store tokens for specific user
+await storeTokensForUser(userId, tokens);
+
+// Retrieve tokens for specific user
+const tokens = await getTokensForUser(userId);
+
+// Store site selection for specific user
+await storeSiteForUser(userId, siteUrl);
+
+// Retrieve site selection for specific user
+const siteUrl = await getSiteForUser(userId);
+```
 
 ## Error Handling
 

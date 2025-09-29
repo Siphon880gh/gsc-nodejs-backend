@@ -1,23 +1,17 @@
-import { readFileSync, writeFileSync, existsSync } from 'fs';
-import { join } from 'path';
 import chalk from 'chalk';
 import { getAvailableSites } from '../datasources/searchconsole.js';
-
-const SITE_CONFIG_PATH = join(process.cwd(), '.selected_site.json');
+import { getSiteForUser, storeSiteForUser } from './database.js';
+import config from '../../config.js';
 
 /**
  * Get the currently selected site
  */
 export function getSelectedSite() {
-  if (!existsSync(SITE_CONFIG_PATH)) {
-    return null;
-  }
-  
   try {
-    const config = JSON.parse(readFileSync(SITE_CONFIG_PATH, 'utf8'));
-    return config.siteUrl;
+    const userId = config.userId;
+    return getSiteForUser(userId);
   } catch (error) {
-    console.log(chalk.yellow('Warning: Could not read site configuration'));
+    console.log(chalk.yellow('Warning: Could not read site configuration from database'));
     return null;
   }
 }
@@ -26,16 +20,12 @@ export function getSelectedSite() {
  * Save the selected site
  */
 export function saveSelectedSite(siteUrl) {
-  const config = {
-    siteUrl,
-    selectedAt: new Date().toISOString()
-  };
-  
   try {
-    writeFileSync(SITE_CONFIG_PATH, JSON.stringify(config, null, 2));
+    const userId = config.userId;
+    storeSiteForUser(userId, siteUrl);
     return true;
   } catch (error) {
-    console.error(chalk.red(`Failed to save site selection: ${error.message}`));
+    console.error(chalk.red(`Failed to save site selection to database: ${error.message}`));
     return false;
   }
 }
@@ -61,15 +51,19 @@ export async function getVerifiedSites(cfg) {
 /**
  * Clear the selected site
  */
-export function clearSelectedSite() {
+export async function clearSelectedSite() {
   try {
-    if (existsSync(SITE_CONFIG_PATH)) {
-      const { unlinkSync } = require('fs');
-      unlinkSync(SITE_CONFIG_PATH);
-    }
-    return true;
+    const { getDatabase } = await import('./database.js');
+    const db = getDatabase();
+    const userId = config.userId;
+    
+    // Delete the site selection from database
+    const deleteSite = db.prepare('DELETE FROM selected_sites WHERE user_id = ?');
+    const result = deleteSite.run(userId);
+    
+    return result.changes > 0;
   } catch (error) {
-    console.error(chalk.red(`Failed to clear site selection: ${error.message}`));
+    console.error(chalk.red(`Failed to clear site selection from database: ${error.message}`));
     return false;
   }
 }
@@ -86,31 +80,30 @@ export function hasValidSiteSelection() {
  * Clear all stored authentication and site data
  */
 export async function signOut() {
-  const { unlinkSync, existsSync } = await import('fs');
-  const { join } = await import('path');
+  const { getDatabase } = await import('./database.js');
+  const db = getDatabase();
   
   let cleared = [];
   
-  // Clear OAuth tokens
-  const tokenPath = join(process.cwd(), '.oauth_tokens.json');
-  if (existsSync(tokenPath)) {
-    try {
-      unlinkSync(tokenPath);
+  try {
+    const userId = config.userId;
+    
+    // Clear OAuth tokens for user
+    const deleteTokens = db.prepare('DELETE FROM oauth_tokens WHERE user_id = ?');
+    const tokenResult = deleteTokens.run(userId);
+    if (tokenResult.changes > 0) {
       cleared.push('OAuth tokens');
-    } catch (error) {
-      console.error('Failed to clear OAuth tokens:', error.message);
     }
-  }
-  
-  // Clear selected site
-  const sitePath = join(process.cwd(), '.selected_site.json');
-  if (existsSync(sitePath)) {
-    try {
-      unlinkSync(sitePath);
+    
+    // Clear selected site for user
+    const deleteSite = db.prepare('DELETE FROM selected_sites WHERE user_id = ?');
+    const siteResult = deleteSite.run(userId);
+    if (siteResult.changes > 0) {
       cleared.push('selected site');
-    } catch (error) {
-      console.error('Failed to clear selected site:', error.message);
     }
+    
+  } catch (error) {
+    console.error('Failed to clear user data from database:', error.message);
   }
   
   return cleared;
