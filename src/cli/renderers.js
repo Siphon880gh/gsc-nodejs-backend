@@ -20,6 +20,7 @@ export async function renderOutput(rows, answers, cfg) {
     } else {
       console.log(json);
     }
+    return true; // Continue to next prompt
   } else if (fmt === "csv") {
     const csv = stringify(sortedRows, { header: true });
     if (shouldSave) {
@@ -27,9 +28,10 @@ export async function renderOutput(rows, answers, cfg) {
     } else {
       process.stdout.write(csv);
     }
+    return true; // Continue to next prompt
   } else {
     // default: table with pagination
-    await displayTableWithPagination(sortedRows);
+    return await displayTableWithPagination(sortedRows);
   }
 }
 
@@ -165,16 +167,21 @@ async function displayTableWithPagination(rows) {
     currentPage++;
     
     if (currentPage < totalPages) {
-      console.log(chalk.yellow(`\nPress Enter to continue to page ${currentPage + 1}...`));
-      await waitForEnter();
+      console.log(chalk.yellow(`\nPress Enter to continue to page ${currentPage + 1} of ${totalPages}, or 'q' to return to menu...`));
+      const shouldContinue = await waitForEnterOrQuit();
+      if (!shouldContinue) {
+        console.log(chalk.blue('\nReturning to main menu...'));
+        return false; // Return to menu
+      }
       console.clear(); // Clear screen for next page
     }
   }
   
   console.log(chalk.green(`\n✅ Displayed all ${rows.length} rows across ${totalPages} pages`));
+  return true; // Completed successfully
 }
 
-async function waitForEnter() {
+async function waitForEnterOrQuit() {
   const readline = await import('readline');
   const rl = readline.createInterface({
     input: process.stdin,
@@ -182,9 +189,15 @@ async function waitForEnter() {
   });
   
   return new Promise((resolve) => {
-    rl.question('', () => {
+    rl.question('', (answer) => {
       rl.close();
-      resolve();
+      // If user types 'q' or 'Q', return to menu immediately
+      if (answer.toLowerCase().trim() === 'q') {
+        resolve(false);
+      } else {
+        // Any other input (including Enter with no text) continues to next page
+        resolve(true);
+      }
     });
   });
 }

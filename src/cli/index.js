@@ -224,13 +224,15 @@ async function main() {
           }
           // For preset queries, don't override sorting - let them use their natural order
           
-          await renderOutput(rows, finalAnswers, cfg);
+          const shouldContinue = await renderOutput(rows, finalAnswers, cfg);
+          if (shouldContinue) {
+            await waitForEnter();
+          }
         } catch (e) {
           spinner.fail("Query failed");
           console.error(chalk.red(e.message));
+          await waitForEnter();
         }
-        
-        await waitForEnter();
       } catch (e) {
         console.error(chalk.red(`Error: ${e.message}`));
         await waitForEnter();
