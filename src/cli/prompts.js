@@ -20,9 +20,9 @@ export async function buildPrompts(cfg) {
       message: "What would you like to do?",
       choices: [
         { name: "Run a query", value: "query" },
-        { name: "Authenticate with Google", value: "auth" },
         { name: "List available sites", value: "sites" },
         { name: "Select/Change site", value: "select_site" },
+        { name: "Sign in with Google Account that has verified access to GSC", value: "auth" },
         { name: "Sign out", value: "signout" },
         { name: "Exit", value: "exit" },
       ],
