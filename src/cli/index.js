@@ -19,6 +19,7 @@ import { renderOutput } from "./renderers.js";
 import { getOAuth2Client, getAvailableSites } from "../datasources/searchconsole.js";
 import { saveSelectedSite, getSelectedSite, hasValidSiteSelection, clearSelectedSite, getVerifiedSites, signOut } from "../utils/site-manager.js";
 import { ensureAuthentication } from "../utils/auth-helper.js";
+import { getDatabase } from "../utils/database.js";
 
 // Helper function to wait for user to continue
 async function waitForEnter() {
@@ -132,6 +133,11 @@ async function handleSignOut() {
 
 async function main() {
   try {
+    // Initialize database on startup
+    console.log("🔧 Initializing database...");
+    getDatabase();
+    console.log("✅ Database initialized successfully");
+    
     // Load and validate configuration first
     const cfg = loadConfig();
     

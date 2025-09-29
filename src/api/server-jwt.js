@@ -24,6 +24,7 @@ import {
   revokeUserSession,
   cleanupExpiredSessions 
 } from "./auth-middleware.js";
+import { getDatabase } from "../utils/database.js";
 
 const app = express();
 const PORT = process.env.PORT || 3000;
@@ -520,6 +521,11 @@ app.get("/api/schema", authenticateToken, async (req, res) => {
     handleError(res, error, 500);
   }
 });
+
+// Initialize database on startup
+console.log("🔧 Initializing database...");
+getDatabase();
+console.log("✅ Database initialized successfully");
 
 // Cleanup expired sessions on startup
 cleanupExpiredSessions();

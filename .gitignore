@@ -1,3 +1,6 @@
+# App
+gsc_auth.db
+
 # Dependencies
 node_modules/
 npm-debug.log*

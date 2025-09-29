@@ -3,6 +3,7 @@ import "dotenv/config";
 import express from "express";
 import cors from "cors";
 import jwtRoutes from "./jwt-routes.js";
+import { getDatabase } from "../utils/database.js";
 
 const app = express();
 const PORT = process.env.PORT || 3000;
@@ -47,6 +48,11 @@ app.use("*", (req, res) => {
     ]
   });
 });
+
+// Initialize database on startup
+console.log("🔧 Initializing database...");
+getDatabase();
+console.log("✅ Database initialized successfully");
 
 // Start server
 app.listen(PORT, () => {
