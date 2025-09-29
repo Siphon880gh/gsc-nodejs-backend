@@ -163,6 +163,11 @@ async function main() {
           break;
         }
         
+        // Skip query processing for non-query actions
+        if (!["adhoc", "preset"].includes(initialAnswers.action)) {
+          continue;
+        }
+        
         // Hardcode source to searchconsole since we only support GSC
         const source = "searchconsole";
         
@@ -191,11 +196,11 @@ async function main() {
           continue;
         }
         
-        // Build additional prompts based on mode
+        // Build additional prompts based on action
         let additionalAnswers = {};
-        if (initialAnswers.mode === "preset") {
+        if (initialAnswers.action === "preset") {
           additionalAnswers = await inquirer.prompt(await buildPresetPrompts(cfg, source));
-        } else if (initialAnswers.mode === "adhoc") {
+        } else if (initialAnswers.action === "adhoc") {
           additionalAnswers = await inquirer.prompt(await buildAdhocPrompts(cfg, source));
         }
         
@@ -207,12 +212,17 @@ async function main() {
           const rows = await runQuery(answers, cfg, auth);
           spinner.succeed(`Fetched ${rows.length} rows`);
           
-          // Ask for sorting preferences before displaying results
-          const sortingAnswers = await inquirer.prompt(await buildSortingPrompts(rows));
-          const finalAnswers = { ...answers, ...sortingAnswers };
+          let finalAnswers = { ...answers };
           
-          // Show sorting feedback to user
-          displaySortingFeedback(sortingAnswers.sorting);
+          // Only ask for sorting preferences for ad-hoc queries
+          if (initialAnswers.action === "adhoc") {
+            const sortingAnswers = await inquirer.prompt(await buildSortingPrompts(rows));
+            finalAnswers = { ...answers, ...sortingAnswers };
+            
+            // Show sorting feedback to user
+            displaySortingFeedback(sortingAnswers.sorting);
+          }
+          // For preset queries, don't override sorting - let them use their natural order
           
           await renderOutput(rows, finalAnswers, cfg);
         } catch (e) {

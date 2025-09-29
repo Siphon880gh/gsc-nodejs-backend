@@ -4,12 +4,13 @@ A Node.js CLI tool for querying Google Search Console data with optional BigQuer
 
 ## Quick Summary
 
-• **Interactive CLI** for Google Search Console data analysis with preset and ad-hoc queries
+• **Interactive CLI** with separate Ad-hoc and Report query options for streamlined data analysis
 • **OAuth2 Authentication** with SQLite database storage for scalable user data management
-• **Smart Sorting System** with real-time feedback and organized single-screen selection
+• **Smart Sorting System** with real-time feedback for ad-hoc queries and client-side sorting for reports
 • **Multiple Data Sources** supporting Google Search Console and BigQuery
 • **Flexible Output** with table, JSON, and CSV formats with intelligent number formatting
-• **Built-in Presets** for common SEO queries (top queries, pages, device breakdown, etc.)
+• **Built-in Presets** including impressions-based reports (Top Queries/Pages by Impressions)
+• **Reliable Sorting** with client-side implementation ensuring accurate preset query results
 
 ## Getting Started
 

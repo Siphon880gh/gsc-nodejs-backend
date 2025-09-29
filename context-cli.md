@@ -6,7 +6,7 @@ Interactive command-line interface built with Inquirer.js providing menu-driven 
 
 ## Menu System
 
-### Main Menu (`src/cli/prompts.js:16-28`)
+### Main Menu (`src/cli/prompts.js:16-31`)
 
 ```javascript
 const base = [
@@ -15,29 +15,24 @@ const base = [
     name: "action",
     message: "What would you like to do?",
     choices: [
-      { name: "Run a query", value: "query" },
-      { name: "Authenticate with Google", value: "auth" },
+      { name: "Ad-hoc query", value: "adhoc" },
+      { name: "Report query", value: "preset" },
       { name: "List available sites", value: "sites" },
       { name: "Select/Change site", value: "select_site" },
+      { name: "Sign in with Google Account that has verified access to GSC", value: "auth" },
+      { name: "Sign out", value: "signout" },
       { name: "Exit", value: "exit" },
     ],
   }
 ];
 ```
 
-### Conditional Prompts
+### Direct Query Access
 
-Query-specific prompts only show when `action === "query"`:
+Query options are now direct root menu items - no conditional prompts needed:
 
-```javascript
-{
-  type: "list",
-  name: "source",
-  message: "Select data source",
-  choices: enabledSources,
-  when: (answers) => answers.action === "query",
-}
-```
+- **Ad-hoc query** (`value: "adhoc"`) - Takes you directly to custom query builder
+- **Report query** (`value: "preset"`) - Takes you directly to preset selection
 
 ## Query Modes
 
@@ -353,12 +348,21 @@ async function main() {
           await handleSiteSelection(cfg);
           await waitForEnter();
           continue;
+        } else if (initialAnswers.action === "signout") {
+          await handleSignOut();
+          await waitForEnter();
+          continue;
         } else if (initialAnswers.action === "exit") {
           console.log(chalk.blue("Goodbye! 👋"));
           break;
         }
         
-        // Query execution flow
+        // Skip query processing for non-query actions
+        if (!["adhoc", "preset"].includes(initialAnswers.action)) {
+          continue;
+        }
+        
+        // Query execution flow for both adhoc and preset
         // ... rest of query logic
         await waitForEnter();
       } catch (e) {

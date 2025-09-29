@@ -33,6 +33,14 @@ export default async function runGSC(query, cfg, auth = null) {
       dataState: query.dataState || 'final',
     };
 
+    // Add orderBy if specified in the query
+    if (query.orderBys && query.orderBys.length > 0) {
+      requestBody.orderBy = query.orderBys.map(orderBy => {
+        const fieldName = orderBy.metric || orderBy.dimension;
+        return orderBy.desc ? `-${fieldName}` : fieldName;
+      });
+    }
+
     console.log(chalk.blue(`Querying GSC site ${siteUrl}...`));
     
     // Use direct OAuth2 client request like the working functions
@@ -43,7 +51,7 @@ export default async function runGSC(query, cfg, auth = null) {
     });
     
     // Transform response to array of objects
-    const rows = (response.data.rows || []).map(row => {
+    let rows = (response.data.rows || []).map(row => {
       const result = {};
       
       // Add dimensions
@@ -61,6 +69,22 @@ export default async function runGSC(query, cfg, auth = null) {
       
       return result;
     });
+
+    // Apply client-side sorting if orderBys are specified
+    if (query.orderBys && query.orderBys.length > 0) {
+      rows = rows.sort((a, b) => {
+        for (const orderBy of query.orderBys) {
+          const fieldName = orderBy.metric || orderBy.dimension;
+          const aVal = a[fieldName] || 0;
+          const bVal = b[fieldName] || 0;
+          
+          if (aVal !== bVal) {
+            return orderBy.desc ? bVal - aVal : aVal - bVal;
+          }
+        }
+        return 0;
+      });
+    }
 
     return rows;
     

@@ -37,7 +37,7 @@ function normalize(answers, cfg) {
   const sourceConfig = cfg.sources[source];
   
   // Handle preset queries
-  if (answers.mode === "preset") {
+  if (answers.action === "preset") {
     const preset = cfg.presets.find(p => p.id === answers.preset);
     if (!preset) {
       throw new Error(`Preset not found: ${answers.preset}`);

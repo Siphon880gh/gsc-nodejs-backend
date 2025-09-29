@@ -19,23 +19,14 @@ export async function buildPrompts(cfg) {
       name: "action",
       message: "What would you like to do?",
       choices: [
-        { name: "Run a query", value: "query" },
-        { name: "List available sites", value: "sites" },
-        { name: "Select/Change site", value: "select_site" },
+        { name: "GSC Query: Ad-hoc", value: "adhoc" },
+        { name: "GSC Query: Report", value: "preset" },
+        { name: "GSC List sites", value: "sites" },
+        { name: "GSC Select site", value: "select_site" },
         { name: "Sign in with Google Account that has verified access to GSC", value: "auth" },
         { name: "Sign out", value: "signout" },
         { name: "Exit", value: "exit" },
       ],
-    },
-    {
-      type: "list",
-      name: "mode",
-      message: "Choose query mode",
-      choices: [
-        { name: "Run a preset", value: "preset" },
-        { name: "Ad-hoc query", value: "adhoc" },
-      ],
-      when: (answers) => answers.action === "query",
     },
   ];
 

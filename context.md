@@ -25,14 +25,15 @@ src/
 
 ## Key Files
 
-- **`src/cli/index.js`** (228 lines) - Main CLI entry point with continuous loop and site selection
-- **`src/datasources/searchconsole.js`** (334 lines) - GSC API with direct OAuth2 requests and SQLite storage
-- **`src/cli/prompts.js`** (350 lines) - Interactive prompts, menu system, and sorting selection
+- **`src/cli/index.js`** (246 lines) - Main CLI entry point with separate ad-hoc/report query handling
+- **`src/datasources/searchconsole.js`** (334+ lines) - GSC API with client-side sorting and OAuth2 requests
+- **`src/cli/prompts.js`** (341 lines) - Interactive prompts with separate query menu options
 - **`src/cli/renderers.js`** (162 lines) - Output rendering with smart sorting and number formatting
+- **`src/core/query-runner.js`** (96 lines) - Query execution with preset/ad-hoc handling
 - **`src/utils/site-manager.js`** (111 lines) - Site selection and SQLite storage utilities
 - **`src/utils/auth-helper.js`** (33 lines) - Reusable authentication utilities
 - **`src/utils/database.js`** (114 lines) - SQLite database operations for user data
-- **`config.js`** (125 lines) - Configuration, presets, and user settings
+- **`config.js`** (146 lines) - Configuration with impressions-based presets
 - **`callback.html`** (143 lines) - OAuth2 callback page
 - **`gsc_auth.db`** - SQLite database for user authentication and site data
 
@@ -75,13 +76,15 @@ const response = await auth.request({
 
 ## CLI Interface
 
-Interactive menu system with five main options and continuous loop:
+Interactive menu system with separate query options and continuous loop:
 
-1. **Run a query** - Execute preset or ad-hoc queries
-2. **Authenticate with Google** - OAuth2 flow setup
-3. **List available sites** - Show GSC properties
-4. **Select/Change site** - Interactive site selection with memory
-5. **Exit** - Properly terminate the CLI
+1. **GSC Query: Ad-hoc** - Execute custom queries with metric/dimension selection
+2. **GSC Query: Report** - Execute predefined preset queries (no sorting prompts)
+3. **GSC List sites** - Show GSC properties
+4. **GSC Select site** - Interactive site selection with memory
+5. **Sign in with Google** - OAuth2 flow setup
+6. **Sign out** - Clear authentication data
+7. **Exit** - Properly terminate the CLI
 
 ```javascript
 // Menu structure in src/cli/prompts.js
@@ -91,10 +94,12 @@ const base = [
     name: "action",
     message: "What would you like to do?",
     choices: [
-      { name: "Run a query", value: "query" },
-      { name: "Authenticate with Google", value: "auth" },
-      { name: "List available sites", value: "sites" },
-      { name: "Select/Change site", value: "select_site" },
+      { name: "GSC Query: Ad-hoc", value: "adhoc" },
+      { name: "GSC Query: Report", value: "preset" },
+      { name: "GSC List sites", value: "sites" },
+      { name: "GSC Select site", value: "select_site" },
+      { name: "Sign in with Google Account that has verified access to GSC", value: "auth" },
+      { name: "Sign out", value: "signout" },
       { name: "Exit", value: "exit" },
     ],
   }
@@ -137,8 +142,8 @@ while (true) {
 
 ## Query System
 
-### Preset Queries
-Built-in SEO analytics queries in `config.js`:
+### Preset Queries (Report Queries)
+Built-in SEO analytics queries in `config.js` with client-side sorting:
 
 ```javascript
 presets: [
@@ -150,9 +155,32 @@ presets: [
     dimensions: ["query"],
     orderBys: [{ metric: "clicks", desc: true }],
     limit: 50
+  },
+  {
+    id: "top-queries-impressions",
+    label: "Top Queries by Impressions",
+    source: "searchconsole",
+    metrics: ["impressions", "clicks", "ctr", "position"],
+    dimensions: ["query"],
+    orderBys: [{ metric: "impressions", desc: true }],
+    limit: 50
+  },
+  {
+    id: "top-pages-impressions",
+    label: "Top Pages by Impressions",
+    source: "searchconsole",
+    metrics: ["impressions", "clicks", "ctr", "position"],
+    dimensions: ["page"],
+    orderBys: [{ metric: "impressions", desc: true }],
+    limit: 50
   }
 ]
 ```
+
+**Key Features:**
+- **No Sorting Prompts**: Report queries skip user sorting prompts (use preset `orderBys`)
+- **Client-Side Sorting**: Reliable sorting applied after API response
+- **Impressions-Based Reports**: New presets for impression-focused analysis
 
 ### Ad-hoc Queries
 Custom query builder with:
@@ -160,6 +188,34 @@ Custom query builder with:
 - **Dimensions**: query, page, country, device, searchAppearance, date
 - **Filters**: Dimension-based filtering
 - **Date Ranges**: Last 7/28/90 days or custom
+- **Interactive Sorting**: User can customize sorting after query execution
+
+## Client-Side Sorting Implementation
+
+For reliable sorting of preset queries, the system uses client-side sorting after API response:
+
+```javascript
+// src/datasources/searchconsole.js - Client-side sorting
+if (query.orderBys && query.orderBys.length > 0) {
+  rows = rows.sort((a, b) => {
+    for (const orderBy of query.orderBys) {
+      const fieldName = orderBy.metric || orderBy.dimension;
+      const aVal = a[fieldName] || 0;
+      const bVal = b[fieldName] || 0;
+      
+      if (aVal !== bVal) {
+        return orderBy.desc ? bVal - aVal : aVal - bVal;
+      }
+    }
+    return 0;
+  });
+}
+```
+
+**Benefits:**
+- **Reliable Sorting**: Guarantees correct sorting regardless of API behavior
+- **Multi-Level Sorting**: Supports primary/secondary sorting levels
+- **Preset Integrity**: Maintains intended sorting for all preset queries
 
 ## Site Selection
 
@@ -259,6 +315,13 @@ Select columns to sort by (order of selection = primary sorting, secondary sorti
 
 ## Recent Updates
 
+### Query System Redesign (v2.2)
+- ✅ **Separate Query Options** - Ad-hoc and Report queries are now distinct root menu items
+- ✅ **Report Query Optimization** - No sorting prompts for preset queries (use built-in sorting)
+- ✅ **Impressions-Based Presets** - Added "Top Queries by Impressions" and "Top Pages by Impressions"
+- ✅ **Client-Side Sorting** - Reliable sorting implementation for preset queries
+- ✅ **Streamlined UX** - Direct access to query types without intermediate menu steps
+
 ### Database Migration (v2.0)
 - ✅ **SQLite Database** - Migrated from JSON files to SQLite for scalable user data storage
 - ✅ **User Isolation** - Each user's authentication and site data stored separately by userId
@@ -274,7 +337,7 @@ Select columns to sort by (order of selection = primary sorting, secondary sorti
 
 ### Core Features
 - ✅ **OAuth2 Authentication** - Browser-based consent flow with SQLite token storage
-- ✅ **Interactive Menu** - Enhanced CLI with authentication and sorting options
+- ✅ **Interactive Menu** - Enhanced CLI with separate query options
 - ✅ **Smart Site Selection** - Interactive site selection with SQLite memory
 - ✅ **Continuous CLI Loop** - Returns to main menu after each action
 - ✅ **Direct API Calls** - Bypassed Google APIs client library issues
