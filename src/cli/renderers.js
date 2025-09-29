@@ -28,28 +28,8 @@ export async function renderOutput(rows, answers, cfg) {
       process.stdout.write(csv);
     }
   } else {
-    // default: table
-    console.log(chalk.blue(`\nShowing first 50 rows of ${sortedRows.length} total:\n`));
-    
-    // Format numbers to 3 decimal places for better readability
-    const formattedRows = sortedRows.slice(0, 50).map(row => {
-      const formattedRow = {};
-      for (const [key, value] of Object.entries(row)) {
-        if (typeof value === 'number' && !Number.isInteger(value)) {
-          // Round to 3 decimal places
-          formattedRow[key] = Math.round(value * 1000) / 1000;
-        } else {
-          formattedRow[key] = value;
-        }
-      }
-      return formattedRow;
-    });
-    
-    console.table(formattedRows);
-    
-    if (sortedRows.length > 50) {
-      console.log(chalk.yellow(`\n... and ${sortedRows.length - 50} more rows`));
-    }
+    // default: table with pagination
+    await displayTableWithPagination(sortedRows);
   }
 }
 
@@ -149,6 +129,63 @@ export function applySorting(rows, sortingConfig) {
     }
     
     return primaryResult;
+  });
+}
+
+async function displayTableWithPagination(rows) {
+  const rowsPerPage = 50;
+  let currentPage = 0;
+  const totalPages = Math.ceil(rows.length / rowsPerPage);
+  
+  console.log(chalk.blue(`\nTotal rows: ${rows.length} (${totalPages} pages)\n`));
+  
+  while (currentPage < totalPages) {
+    const startIndex = currentPage * rowsPerPage;
+    const endIndex = Math.min(startIndex + rowsPerPage, rows.length);
+    const pageRows = rows.slice(startIndex, endIndex);
+    
+    console.log(chalk.gray(`Page ${currentPage + 1} of ${totalPages} (rows ${startIndex + 1}-${endIndex}):\n`));
+    
+    // Format numbers to 3 decimal places for better readability
+    const formattedRows = pageRows.map(row => {
+      const formattedRow = {};
+      for (const [key, value] of Object.entries(row)) {
+        if (typeof value === 'number' && !Number.isInteger(value)) {
+          // Round to 3 decimal places
+          formattedRow[key] = Math.round(value * 1000) / 1000;
+        } else {
+          formattedRow[key] = value;
+        }
+      }
+      return formattedRow;
+    });
+    
+    console.table(formattedRows);
+    
+    currentPage++;
+    
+    if (currentPage < totalPages) {
+      console.log(chalk.yellow(`\nPress Enter to continue to page ${currentPage + 1}...`));
+      await waitForEnter();
+      console.clear(); // Clear screen for next page
+    }
+  }
+  
+  console.log(chalk.green(`\n✅ Displayed all ${rows.length} rows across ${totalPages} pages`));
+}
+
+async function waitForEnter() {
+  const readline = await import('readline');
+  const rl = readline.createInterface({
+    input: process.stdin,
+    output: process.stdout
+  });
+  
+  return new Promise((resolve) => {
+    rl.question('', () => {
+      rl.close();
+      resolve();
+    });
   });
 }
 

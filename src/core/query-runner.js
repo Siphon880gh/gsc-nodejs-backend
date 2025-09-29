@@ -49,7 +49,7 @@ function normalize(answers, cfg) {
       metrics: preset.metrics,
       dimensions: preset.dimensions,
       orderBys: preset.orderBys || [],
-      limit: Math.min(preset.limit || 1000, cfg.limits.maxRows),
+      limit: Math.min(answers.limit || preset.limit || 1000, cfg.limits.maxRows),
       filters: preset.filters || [],
     };
   }

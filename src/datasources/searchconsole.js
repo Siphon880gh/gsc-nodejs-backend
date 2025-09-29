@@ -42,6 +42,7 @@ export default async function runGSC(query, cfg, auth = null) {
     }
 
     console.log(chalk.blue(`Querying GSC site ${siteUrl}...`));
+    console.log(chalk.gray(`Request body:`, JSON.stringify(requestBody, null, 2)));
     
     // Use direct OAuth2 client request like the working functions
     const response = await auth.request({
@@ -69,6 +70,8 @@ export default async function runGSC(query, cfg, auth = null) {
       
       return result;
     });
+
+    console.log(chalk.gray(`GSC API returned ${rows.length} rows (requested limit: ${requestBody.rowLimit})`));
 
     // Apply client-side sorting if orderBys are specified
     if (query.orderBys && query.orderBys.length > 0) {

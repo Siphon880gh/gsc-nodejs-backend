@@ -105,6 +105,18 @@ export async function buildPresetPrompts(cfg, source) {
       },
     },
     {
+      type: "number",
+      name: "limit",
+      message: "Limit results (max 100,000)",
+      default: 1000,
+      validate: (input) => {
+        if (input < 1 || input > 100000) {
+          return "Limit must be between 1 and 100,000";
+        }
+        return true;
+      },
+    },
+    {
       type: "list",
       name: "outputFormat",
       message: "Output format",

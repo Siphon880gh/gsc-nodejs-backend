@@ -25,6 +25,8 @@ export default async function runBQ(query, cfg) {
     const sql = buildSQL(query, projectId, dataset, bqConfig);
     
     console.log(chalk.blue(`Querying BigQuery project ${projectId}, dataset ${dataset}...`));
+    console.log(chalk.gray(`SQL query:`, sql));
+    console.log(chalk.gray(`Query limit:`, query.limit || 1000));
     
     // Execute query
     const options = {
@@ -38,6 +40,8 @@ export default async function runBQ(query, cfg) {
 
     const [job] = await client.createQueryJob(options);
     const [rows] = await job.getQueryResults();
+    
+    console.log(chalk.gray(`BigQuery returned ${rows.length} rows (requested limit: ${query.limit || 1000})`));
     
     return rows;
     
