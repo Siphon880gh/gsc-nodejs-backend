@@ -153,6 +153,7 @@ export async function buildAdhocPrompts(cfg, source) {
       name: "metrics",
       message: "Select metrics",
       choices: metrics,
+      default: ["clicks", "impressions", "ctr", "position"],
       validate: (input) => {
         if (input.length === 0) {
           return "Please select at least one metric";
@@ -318,7 +319,7 @@ export async function buildSortingPrompts(rows) {
         
         return true;
       },
-      default: ['none']
+      // default: ['none']
     }
   ];
 }
