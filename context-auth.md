@@ -78,6 +78,44 @@ try {
 }
 ```
 
+### Handle Authentication Function (`src/cli/index.js:33-57`)
+
+The `handleAuthentication` function manages the OAuth2 flow when authentication is required:
+
+```javascript
+async function handleAuthentication(cfg) {
+  const spinner = ora("Authenticating with Google...").start();
+  try {
+    // Set a dummy site URL for authentication
+    const originalSiteUrl = process.env.GSC_SITE_URL;
+    process.env.GSC_SITE_URL = "https://example.com/";
+    
+    const auth = await getOAuth2Client(cfg.sources.searchconsole);
+    
+    // Restore original site URL
+    if (originalSiteUrl) {
+      process.env.GSC_SITE_URL = originalSiteUrl;
+    } else {
+      delete process.env.GSC_SITE_URL;
+    }
+    
+    spinner.succeed("Authentication successful!");
+    console.log(chalk.green("You are now authenticated with Google Search Console."));
+    console.log(chalk.blue("You can now run queries without re-authenticating."));
+  } catch (error) {
+    spinner.fail("Authentication failed");
+    console.error(chalk.red(error.message));
+    process.exitCode = 1;
+  }
+}
+```
+
+**Key Features:**
+- **Environment Management**: Temporarily sets a dummy site URL during authentication
+- **User Feedback**: Provides clear success/failure messages with colored output
+- **Error Handling**: Graceful failure with proper exit codes
+- **Spinner UI**: Visual feedback during the authentication process
+
 ### Consistent Usage Across Handlers
 
 All CLI handlers use the same authentication pattern:
@@ -140,9 +178,13 @@ const code = await waitForCallback();
 const { tokens: newTokens } = await oauth2Client.getToken(code);
 ```
 
-## Token Storage
+## Files Created During Authentication
 
-### File: `.oauth_tokens.json`
+### 1. OAuth2 Tokens (`.oauth_tokens.json`)
+
+**Location**: Project root directory  
+**Purpose**: Stores OAuth2 access and refresh tokens  
+**Content**:
 
 ```json
 {
@@ -154,12 +196,72 @@ const { tokens: newTokens } = await oauth2Client.getToken(code);
 }
 ```
 
+**Creation Process**:
+```javascript
+// Store tokens for future use
+const { writeFileSync } = await import('fs');
+writeFileSync(tokenPath, JSON.stringify(newTokens, null, 2));
+```
+
+### 2. Site Selection (`.selected_site.json`)
+
+**Location**: Project root directory  
+**Purpose**: Stores the user's selected Search Console site  
+**Content**:
+
+```json
+{
+  "siteUrl": "https://example.com/",
+  "selectedAt": "2024-01-15T10:30:00.000Z"
+}
+```
+
+**Creation Process**:
+```javascript
+// Save selected site configuration
+const config = {
+  siteUrl,
+  selectedAt: new Date().toISOString()
+};
+writeFileSync(SITE_CONFIG_PATH, JSON.stringify(config, null, 2));
+```
+
+### 3. OAuth2 Callback Server
+
+**Temporary HTTP Server**: `localhost:8888`  
+**Purpose**: Receives OAuth2 authorization code from Google  
+**Process**:
+1. Starts temporary HTTP server on port 8888
+2. Opens browser to Google OAuth2 consent page
+3. Google redirects to `http://localhost:8888/?code=AUTHORIZATION_CODE`
+4. Server extracts authorization code
+5. Server closes after receiving code
+
+### 4. Callback HTML Page (`callback.html`)
+
+**Location**: Project root directory  
+**Purpose**: User-friendly OAuth2 callback page  
+**Features**:
+- Loading spinner during authentication
+- Success/error message display
+- Automatic window closing
+- Fallback communication methods
+
+## Token Storage & Management
+
 ### Token Lifecycle
 
 1. **Initial Auth**: Browser consent → authorization code → tokens
 2. **Token Refresh**: Automatic refresh using refresh_token
 3. **Token Validation**: Check expiry before API calls
 4. **Token Storage**: Persistent storage in `.oauth_tokens.json`
+
+### File Permissions & Security
+
+- **Token files**: Created with default file permissions
+- **Sensitive data**: Contains access tokens and refresh tokens
+- **Local storage**: Files stored in project root directory
+- **No encryption**: Tokens stored in plain JSON format
 
 ## Error Handling
 
