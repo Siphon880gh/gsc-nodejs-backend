@@ -4,12 +4,98 @@
  * Run this after starting the JWT API server with: npm run api:jwt
  */
 
+import readline from 'readline';
+
 const BASE_URL = 'http://localhost:3000';
 const USER_ID = 'testuser';
 const USER_EMAIL = 'test@example.com';
 const USER_NAME = 'Test User';
 
 let authToken = null;
+
+// Helper function to ask user for input
+function askQuestion(question) {
+  const rl = readline.createInterface({
+    input: process.stdin,
+    output: process.stdout
+  });
+
+  return new Promise((resolve) => {
+    rl.question(question, (answer) => {
+      rl.close();
+      resolve(answer);
+    });
+  });
+}
+
+// Helper function to clean up database directly
+async function cleanupDatabase() {
+  try {
+    console.log('🧹 Attempting to clean up database directly...');
+    
+    // Try to delete the user directly via API if possible
+    const deleteResult = await testEndpoint('DELETE', '/api/auth/user', null, false);
+    
+    if (deleteResult && deleteResult.success) {
+      console.log('✅ Database cleanup successful!');
+      return true;
+    } else {
+      console.log('⚠️  Direct database cleanup failed, but continuing...');
+      return false;
+    }
+  } catch (error) {
+    console.log('⚠️  Database cleanup error:', error.message);
+    return false;
+  }
+}
+
+// Helper function to manually clean up database file
+async function manualDatabaseCleanup() {
+  try {
+    console.log('🗑️  Attempting manual database cleanup...');
+    const { exec } = await import('child_process');
+    const { promisify } = await import('util');
+    const execAsync = promisify(exec);
+    
+    // Remove the database file to start fresh
+    await execAsync('rm -f gsc_auth.db');
+    console.log('✅ Database file removed successfully!');
+    
+    // Restart the API server to recreate the database
+    console.log('🔄 Restarting API server to recreate database...');
+    const { spawn } = await import('child_process');
+    
+    // Kill existing server
+    try {
+      await execAsync('pkill -f "node src/api/server.js"');
+    } catch (e) {
+      // Ignore if no process found
+    }
+    
+    // Start new server
+    const server = spawn('npm', ['run', 'api'], { 
+      stdio: 'pipe',
+      cwd: process.cwd()
+    });
+    
+    // Wait for server to start
+    let attempts = 0;
+    while (attempts < 10) {
+      if (await checkServerRunning()) {
+        console.log('✅ API server restarted successfully!');
+        return true;
+      }
+      await new Promise(resolve => setTimeout(resolve, 1000));
+      attempts++;
+    }
+    
+    console.log('❌ Failed to restart API server');
+    return false;
+  } catch (error) {
+    console.log('❌ Manual database cleanup failed:', error.message);
+    return false;
+  }
+}
 
 async function testEndpoint(method, endpoint, data = null, useAuth = true) {
   const url = `${BASE_URL}${endpoint}`;
@@ -97,10 +183,145 @@ async function runTests() {
   }, false);
   
   if (!signupResult || !signupResult.success) {
-    console.log('❌ User signup failed! Cannot continue with other tests.');
-    return;
+    if (signupResult && signupResult.error && signupResult.error.includes('User already exists')) {
+      console.log(`\n⚠️  User already exists with userId: "${USER_ID}" and email: "${USER_EMAIL}"`);
+      const shouldDelete = await askQuestion('Do you want to delete this user and continue the test? (y/N): ');
+      
+      if (shouldDelete.toLowerCase() === 'y' || shouldDelete.toLowerCase() === 'yes') {
+        // Ask if user wants to manually clean up database
+        const shouldManualCleanup = await askQuestion('The user might be in an inactive state. Do you want to manually clean up the database? (y/N): ');
+        
+        if (shouldManualCleanup.toLowerCase() === 'y' || shouldManualCleanup.toLowerCase() === 'yes') {
+          console.log('🗑️  Performing manual database cleanup...');
+          const manualCleanupSuccess = await manualDatabaseCleanup();
+          
+          if (manualCleanupSuccess) {
+            console.log('🔄 Retrying user signup after manual cleanup...');
+            const retrySignupResult = await testEndpoint('POST', '/api/auth/signup', {
+              userId: USER_ID,
+              email: USER_EMAIL,
+              name: USER_NAME
+            }, false);
+            
+            if (retrySignupResult && retrySignupResult.success) {
+              console.log('✅ User signup successful after manual cleanup!');
+              authToken = null; // Reset token for fresh login later
+            } else {
+              console.log('❌ User signup failed after manual cleanup! Cannot continue with other tests.');
+              return;
+            }
+          } else {
+            console.log('❌ Manual database cleanup failed! Cannot continue with other tests.');
+            return;
+          }
+        } else {
+          console.log('🔄 Proceeding with automatic cleanup attempts...');
+        }
+        
+        console.log('🗑️  Deleting existing user...');
+        
+        // First try to login to get a token for deletion
+        const loginResult = await testEndpoint('POST', '/api/auth/login', {
+          userId: USER_ID
+        }, false);
+        
+        if (loginResult && loginResult.success && loginResult.token) {
+          authToken = loginResult.token;
+          const deleteResult = await testEndpoint('DELETE', '/api/auth/user');
+          
+          if (deleteResult && deleteResult.success) {
+            console.log('✅ User deleted successfully!');
+            
+            // Now try signup again
+            console.log('🔄 Retrying user signup...');
+            const retrySignupResult = await testEndpoint('POST', '/api/auth/signup', {
+              userId: USER_ID,
+              email: USER_EMAIL,
+              name: USER_NAME
+            }, false);
+            
+            if (retrySignupResult && retrySignupResult.success) {
+              console.log('✅ User signup successful after deletion!');
+              authToken = null; // Reset token for fresh login later
+            } else {
+              console.log('❌ User signup failed after deletion! Cannot continue with other tests.');
+              return;
+            }
+          } else {
+            console.log('❌ User deletion failed! Cannot continue with other tests.');
+            return;
+          }
+        } else {
+          console.log('⚠️  Could not login to delete existing user. This might be due to user being inactive.');
+          
+          // Try database cleanup as fallback
+          const cleanupSuccess = await cleanupDatabase();
+          
+          if (cleanupSuccess) {
+            console.log('🔄 Retrying user signup after cleanup...');
+            const retrySignupResult = await testEndpoint('POST', '/api/auth/signup', {
+              userId: USER_ID,
+              email: USER_EMAIL,
+              name: USER_NAME
+            }, false);
+            
+            if (retrySignupResult && retrySignupResult.success) {
+              console.log('✅ User signup successful after cleanup!');
+              authToken = null; // Reset token for fresh login later
+            } else {
+              console.log('❌ User signup failed after cleanup! Cannot continue with other tests.');
+              return;
+            }
+          } else {
+            console.log('🔄 Attempting manual database cleanup as final fallback...');
+            
+            // Try manual database cleanup as final fallback
+            const manualCleanupSuccess = await manualDatabaseCleanup();
+            
+            if (manualCleanupSuccess) {
+              console.log('🔄 Retrying user signup after manual cleanup...');
+              const retrySignupResult = await testEndpoint('POST', '/api/auth/signup', {
+                userId: USER_ID,
+                email: USER_EMAIL,
+                name: USER_NAME
+              }, false);
+              
+              if (retrySignupResult && retrySignupResult.success) {
+                console.log('✅ User signup successful after manual cleanup!');
+                authToken = null; // Reset token for fresh login later
+              } else {
+                console.log('❌ User signup failed after manual cleanup! Cannot continue with other tests.');
+                return;
+              }
+            } else {
+              console.log('🔄 Attempting to continue with existing user...');
+              
+              // Try to continue with the existing user by attempting login again
+              const retryLoginResult = await testEndpoint('POST', '/api/auth/login', {
+                userId: USER_ID
+              }, false);
+              
+              if (retryLoginResult && retryLoginResult.success && retryLoginResult.token) {
+                console.log('✅ Successfully logged in with existing user!');
+                authToken = retryLoginResult.token;
+              } else {
+                console.log('❌ Could not login with existing user! Cannot continue with other tests.');
+                return;
+              }
+            }
+          }
+        }
+      } else {
+        console.log('❌ User signup failed and user chose not to delete existing user! Cannot continue with other tests.');
+        return;
+      }
+    } else {
+      console.log('❌ User signup failed! Cannot continue with other tests.');
+      return;
+    }
+  } else {
+    console.log('✅ User signup successful!');
   }
-  console.log('✅ User signup successful!');
   
   // Test OAuth authentication first
   console.log('\n🔐 Testing OAuth authentication...');

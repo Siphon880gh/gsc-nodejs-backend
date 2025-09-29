@@ -17,6 +17,8 @@ A Node.js CLI tool for querying Google Search Console data with optional BigQuer
 
 ## API Test Flow
 
+Test with `npm run test:api` or `node test-api.js`
+
 **User Signup**: Creates a record in our local database only
 
 **User Login**: 

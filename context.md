@@ -43,8 +43,7 @@ The application now supports both CLI and REST API interfaces:
 - **`src/cli/renderers.js`** (212 lines) - Output rendering with pagination, smart sorting and number formatting
 
 ### API Server
-- **`src/api/server.js`** (60 lines) - Main API server with user-based routing
-- **`src/api/server-jwt.js`** (60 lines) - JWT-based API server for secure authentication
+- **`src/api/server.js`** (66 lines) - Main API server with JWT authentication
 - **`src/api/jwt-routes.js`** (710 lines) - JWT authentication routes and middleware
 - **`src/api/auth-middleware.js`** (162 lines) - JWT authentication middleware
 
@@ -437,7 +436,7 @@ app.post('/api/:userId/query/preset', runPresetQuery);
 - **User Isolation**: Separate authentication and site data per user
 - **Flexible Output**: JSON, CSV, and table formats
 
-### JWT Authentication System (`src/api/server-jwt.js` - 60 lines)
+### JWT Authentication System (`src/api/jwt-routes.js` - 710 lines)
 
 Secure JWT-based authentication system for production use:
 

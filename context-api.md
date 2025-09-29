@@ -6,37 +6,26 @@ Complete REST API implementation providing all CLI functionality as HTTP endpoin
 
 ## API Architecture
 
-### Dual API Support
+The application provides a single API implementation with JWT authentication:
 
-The application provides two API implementations:
-
-1. **Standard API** (`src/api/server.js` - 60 lines) - User-based routing with `userId` parameter
-2. **JWT API** (`src/api/server-jwt.js` - 60 lines) - Secure token-based authentication
+1. **Main API** (`src/api/server.js` - 66 lines) - Express server with JWT authentication
+2. **JWT Routes** (`src/api/jwt-routes.js` - 710 lines) - JWT authentication routes and middleware
 
 ### Server Implementation
 
 ```javascript
-// Standard API server (src/api/server.js)
+// Main API server (src/api/server.js)
 const express = require('express');
+const jwtRoutes = require('./jwt-routes.js');
 const app = express();
 
-// User-based routing: /api/{userId}/endpoint
-app.get('/api/:userId/status', getUserStatus);
-app.post('/api/:userId/auth', authenticateUser);
-app.get('/api/:userId/sites', listUserSites);
-app.post('/api/:userId/query/adhoc', runAdhocQuery);
-app.post('/api/:userId/query/preset', runPresetQuery);
-```
+// Use JWT routes for all endpoints
+app.use('/', jwtRoutes);
 
-```javascript
-// JWT API server (src/api/server-jwt.js)
-const express = require('express');
-const app = express();
-
-// JWT authentication middleware
-app.post('/api/auth/login', loginUser);        // Returns JWT token
-app.get('/api/status', authenticateJWT, getUserStatus);
-app.post('/api/query/adhoc', authenticateJWT, runAdhocQuery);
+// Health check endpoint
+app.get('/health', (req, res) => {
+  res.json({ success: true, message: "GSC API Server is running" });
+});
 ```
 
 ## JWT Authentication System

@@ -124,11 +124,11 @@ router.post("/api/auth/signup", async (req, res) => {
     
     // Create new user
     const stmt = db.prepare(`
-      INSERT INTO users (user_id, email, name)
-      VALUES (?, ?, ?)
+      INSERT INTO users (user_id, email, name, is_active)
+      VALUES (?, ?, ?, 1)
     `);
     
-    stmt.run(userId, email, name || null);
+    const result = stmt.run(userId, email, name || null);
     
     res.status(201).json({
       success: true,
