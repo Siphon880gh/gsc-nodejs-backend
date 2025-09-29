@@ -117,10 +117,25 @@ async function testEndpoint(method, endpoint, data = null, useAuth = true) {
   
   try {
     const response = await fetch(url, options);
-    const result = await response.json();
-    console.log(`\n${method} ${endpoint}`);
-    console.log('Status:', response.status);
-    console.log('Response:', JSON.stringify(result, null, 2));
+    
+    // Check content type to determine how to parse response
+    const contentType = response.headers.get('content-type');
+    
+    let result;
+    if (contentType && contentType.includes('text/csv')) {
+      // Handle CSV response
+      result = await response.text();
+      console.log(`\n${method} ${endpoint}`);
+      console.log('Status:', response.status);
+      console.log('Response (CSV):', result.substring(0, 200) + (result.length > 200 ? '...' : ''));
+    } else {
+      // Handle JSON response
+      result = await response.json();
+      console.log(`\n${method} ${endpoint}`);
+      console.log('Status:', response.status);
+      console.log('Response:', JSON.stringify(result, null, 2));
+    }
+    
     return result;
   } catch (error) {
     console.error(`Error testing ${method} ${endpoint}:`, error.message);
