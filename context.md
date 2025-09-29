@@ -25,10 +25,10 @@ src/
 
 ## Key Files
 
-- **`src/cli/index.js`** (246 lines) - Main CLI entry point with separate ad-hoc/report query handling
-- **`src/datasources/searchconsole.js`** (334+ lines) - GSC API with client-side sorting and OAuth2 requests
-- **`src/cli/prompts.js`** (341 lines) - Interactive prompts with separate query menu options
-- **`src/cli/renderers.js`** (162 lines) - Output rendering with smart sorting and number formatting
+- **`src/cli/index.js`** (248 lines) - Main CLI entry point with pagination and enhanced UX
+- **`src/datasources/searchconsole.js`** (361 lines) - GSC API with client-side sorting and OAuth2 requests
+- **`src/cli/prompts.js`** (354 lines) - Interactive prompts with advanced sorting and column selection
+- **`src/cli/renderers.js`** (212 lines) - Output rendering with pagination, smart sorting and number formatting
 - **`src/core/query-runner.js`** (96 lines) - Query execution with preset/ad-hoc handling
 - **`src/utils/site-manager.js`** (111 lines) - Site selection and SQLite storage utilities
 - **`src/utils/auth-helper.js`** (33 lines) - Reusable authentication utilities
@@ -308,12 +308,92 @@ Select columns to sort by (order of selection = primary sorting, secondary sorti
 
 ## Output Formats
 
-- **Table**: Console-formatted tables with chalk styling and 3-decimal formatting
+- **Table**: Console-formatted tables with pagination, chalk styling and 3-decimal formatting
 - **JSON**: Structured data export with sorting applied
 - **CSV**: Spreadsheet-compatible format with sorting applied
 - **File Export**: Optional file saving with timestamps
 
+## Pagination System
+
+The CLI now includes intelligent pagination for large result sets:
+
+### Pagination Features
+- **50 Rows Per Page**: Optimal balance between readability and information density
+- **Interactive Navigation**: Press Enter to continue or 'q' to return to main menu
+- **Progress Tracking**: Shows current page, total pages, and row ranges
+- **Screen Clearing**: Clean transitions between pages for better readability
+- **Flexible Exit**: Users can quit pagination at any time
+
+```javascript
+// Pagination implementation in src/cli/renderers.js
+async function displayTableWithPagination(rows) {
+  const rowsPerPage = 50;
+  let currentPage = 0;
+  const totalPages = Math.ceil(rows.length / rowsPerPage);
+  
+  console.log(chalk.blue(`\nTotal rows: ${rows.length} (${totalPages} pages)\n`));
+  
+  while (currentPage < totalPages) {
+    const startIndex = currentPage * rowsPerPage;
+    const endIndex = Math.min(startIndex + rowsPerPage, rows.length);
+    const pageRows = rows.slice(startIndex, endIndex);
+    
+    console.log(chalk.gray(`Page ${currentPage + 1} of ${totalPages} (rows ${startIndex + 1}-${endIndex}):\n`));
+    
+    // Format numbers to 3 decimal places for better readability
+    const formattedRows = pageRows.map(row => {
+      const formattedRow = {};
+      for (const [key, value] of Object.entries(row)) {
+        if (typeof value === 'number' && !Number.isInteger(value)) {
+          formattedRow[key] = Math.round(value * 1000) / 1000;
+        } else {
+          formattedRow[key] = value;
+        }
+      }
+      return formattedRow;
+    });
+    
+    console.table(formattedRows);
+    
+    currentPage++;
+    
+    if (currentPage < totalPages) {
+      console.log(chalk.yellow(`\nPress Enter to continue to page ${currentPage + 1} of ${totalPages}, or 'q' to return to menu...`));
+      const shouldContinue = await waitForEnterOrQuit();
+      if (!shouldContinue) {
+        console.log(chalk.blue('\nReturning to main menu...'));
+        return false; // Return to menu
+      }
+      console.clear(); // Clear screen for next page
+    }
+  }
+  
+  console.log(chalk.green(`\n✅ Displayed all ${rows.length} rows across ${totalPages} pages`));
+  return true; // Completed successfully
+}
+```
+
+**Benefits:**
+- **Better UX**: Large datasets are manageable and readable
+- **User Control**: Users can exit pagination at any time
+- **Performance**: No memory issues with large result sets
+- **Clean Interface**: Screen clearing prevents visual clutter
+
 ## Recent Updates
+
+### Enhanced UX and Pagination (v2.4)
+- ✅ **Smart Pagination** - Table output now supports pagination with 50 rows per page
+- ✅ **Interactive Navigation** - Press Enter to continue or 'q' to return to menu
+- ✅ **Screen Clearing** - Clean page transitions for better readability
+- ✅ **Progress Tracking** - Shows current page and total pages with row counts
+- ✅ **Flexible Exit** - Users can quit pagination at any time to return to main menu
+
+### Advanced Sorting System (v2.3)
+- ✅ **Multi-Level Sorting** - Primary and secondary sorting with selection order tracking
+- ✅ **No Default Selection** - Sorting prompts start with nothing selected for cleaner UX
+- ✅ **Column Selection** - Ad-hoc queries now support interactive column selection
+- ✅ **Real-Time Feedback** - Visual indicators show current sorting configuration
+- ✅ **Smart Validation** - Prevents duplicate column selections and invalid combinations
 
 ### Query System Redesign (v2.2)
 - ✅ **Separate Query Options** - Ad-hoc and Report queries are now distinct root menu items

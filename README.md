@@ -4,9 +4,10 @@ A Node.js CLI tool for querying Google Search Console data with optional BigQuer
 
 ## Quick Summary
 
-• **Interactive CLI** with separate Ad-hoc and Report query options for streamlined data analysis
+• **Interactive CLI** with separate Ad-hoc and Report query options, pagination, and enhanced UX
 • **OAuth2 Authentication** with SQLite database storage for scalable user data management
-• **Smart Sorting System** with real-time feedback for ad-hoc queries and client-side sorting for reports
+• **Smart Pagination** with 50 rows per page, interactive navigation, and flexible exit options
+• **Advanced Sorting System** with multi-level sorting, column selection, and real-time feedback
 • **Multiple Data Sources** supporting Google Search Console and BigQuery
 • **Flexible Output** with table, JSON, and CSV formats with intelligent number formatting
 • **Built-in Presets** including impressions-based reports (Top Queries/Pages by Impressions)
@@ -33,12 +34,13 @@ npm start
 
 - 🔐 **OAuth2 Authentication** - Secure Google API access with SQLite database storage
 - 📊 **Interactive Queries** - Preset and custom query modes with smart sorting
+- 📄 **Smart Pagination** - 50 rows per page with interactive navigation and flexible exit
 - 🏢 **Multi-Source** - Google Search Console and BigQuery support
 - 📈 **SEO Analytics** - Built-in presets for common SEO metrics
 - 💾 **Flexible Export** - Table, JSON, and CSV output formats with number formatting
 - ⚡ **Fast Setup** - Automated OAuth2 flow with database token management
 - 🎯 **Smart Site Selection** - Interactive site selection with SQLite memory
-- 🔄 **Smart Sorting** - Real-time feedback with organized single-screen selection
+- 🔄 **Advanced Sorting** - Multi-level sorting with column selection and real-time feedback
 - 👥 **User Isolation** - Scalable architecture ready for multi-user applications
 
 Refer to README for high-level context; details are in context files.

@@ -8,15 +8,15 @@ Advanced sorting system with real-time feedback, organized single-screen selecti
 
 ### Core Components
 
-- **`src/cli/prompts.js`** (350 lines) - Sorting prompts and feedback display
-- **`src/cli/renderers.js`** (162 lines) - Sorting logic and number formatting
-- **`src/cli/index.js`** (228 lines) - CLI integration with sorting flow
+- **`src/cli/prompts.js`** (354 lines) - Sorting prompts and feedback display
+- **`src/cli/renderers.js`** (212 lines) - Sorting logic, pagination and number formatting
+- **`src/cli/index.js`** (248 lines) - CLI integration with sorting flow
 
 ## Sorting Interface
 
 ### Single-Screen Multiselect
 
-Organized checkbox interface with clean separators:
+Organized checkbox interface with clean separators and no default selection for cleaner UX:
 
 ```javascript
 Select columns to sort by (order of selection = primary sorting, secondary sorting):
