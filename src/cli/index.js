@@ -13,7 +13,7 @@ import inquirer from "inquirer";
 import ora from "ora";
 import chalk from "chalk";
 import { loadConfig } from "../utils/config.js";
-import { buildPrompts, buildPresetPrompts, buildAdhocPrompts, buildSiteSelectionPrompts } from "./prompts.js";
+import { buildPrompts, buildPresetPrompts, buildAdhocPrompts, buildSiteSelectionPrompts, buildSortingPrompts, displaySortingFeedback } from "./prompts.js";
 import { runQuery } from "../core/query-runner.js";
 import { renderOutput } from "./renderers.js";
 import { getOAuth2Client, getAvailableSites } from "../datasources/searchconsole.js";
@@ -206,7 +206,15 @@ async function main() {
         try {
           const rows = await runQuery(answers, cfg, auth);
           spinner.succeed(`Fetched ${rows.length} rows`);
-          await renderOutput(rows, answers, cfg);
+          
+          // Ask for sorting preferences before displaying results
+          const sortingAnswers = await inquirer.prompt(await buildSortingPrompts(rows));
+          const finalAnswers = { ...answers, ...sortingAnswers };
+          
+          // Show sorting feedback to user
+          displaySortingFeedback(sortingAnswers.sorting);
+          
+          await renderOutput(rows, finalAnswers, cfg);
         } catch (e) {
           spinner.fail("Query failed");
           console.error(chalk.red(e.message));

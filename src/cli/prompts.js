@@ -262,3 +262,88 @@ export function getDateRange(type, customStart, customEnd) {
       throw new Error(`Unknown date range type: ${type}`);
   }
 }
+
+/**
+ * Build sorting selection prompts
+ */
+export async function buildSortingPrompts(rows) {
+  if (!rows || rows.length === 0) {
+    return { sorting: { enabled: false } };
+  }
+
+  // Get available columns from the first row
+  const availableColumns = Object.keys(rows[0]);
+  
+  // Create organized choices with separators
+  const choices = [
+    { name: 'No Sorting', value: 'none' },
+    { name: '', value: '', disabled: true },
+    ...availableColumns.map(column => ({
+      name: `ASC: ${column}`,
+      value: { column, direction: 'asc' }
+    })),
+    { name: '', value: '', disabled: true },
+    ...availableColumns.map(column => ({
+      name: `DSC: ${column}`,
+      value: { column, direction: 'desc' }
+    }))
+  ];
+  
+  return [
+    {
+      type: 'checkbox',
+      name: 'sorting.columns',
+      message: 'Select columns to sort by (order of selection = primary sorting, secondary sorting):',
+      choices,
+      validate: (input) => {
+        if (input.length === 0) {
+          return 'Please select at least one option';
+        }
+        if (input.includes('none') && input.length > 1) {
+          return 'Cannot select "No Sorting" with other options';
+        }
+        
+        // Check for duplicate columns (both ASC and DSC versions)
+        const selectedColumns = input
+          .filter(item => typeof item === 'object' && item.column)
+          .map(item => item.column);
+        
+        const uniqueColumns = new Set(selectedColumns);
+        if (selectedColumns.length !== uniqueColumns.size) {
+          return 'Cannot select both ascending and descending versions of the same column';
+        }
+        
+        return true;
+      },
+      default: ['none']
+    }
+  ];
+}
+
+/**
+ * Display sorting feedback to show what sorting is currently selected
+ */
+export function displaySortingFeedback(sortingConfig) {
+  if (!sortingConfig?.columns || sortingConfig.columns.includes('none')) {
+    console.log(chalk.gray('📊 No sorting applied'));
+    return;
+  }
+  
+  const sortItems = sortingConfig.columns.filter(item => 
+    typeof item === 'object' && item.column && item.direction
+  );
+  
+  if (sortItems.length === 0) {
+    console.log(chalk.gray('📊 No sorting applied'));
+    return;
+  }
+  
+  const sortDescription = sortItems.map((item, index) => {
+    const priority = index === 0 ? 'Primary' : index === 1 ? 'Secondary' : `Level ${index + 1}`;
+    const direction = item.direction === 'asc' ? 'ascending' : 'descending';
+    const directionIcon = item.direction === 'asc' ? '↑' : '↓';
+    return `${priority}: ${item.column} ${directionIcon} (${direction})`;
+  }).join(', ');
+  
+  console.log(chalk.blue(`📊 Sorting applied: ${sortDescription}`));
+}

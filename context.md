@@ -8,9 +8,10 @@ A Node.js CLI tool for querying Google Search Console data with OAuth2 authentic
 
 - **Runtime**: Node.js 18+ with ES modules
 - **Authentication**: OAuth2 with Google APIs client library
+- **Database**: SQLite with better-sqlite3 for user data storage
 - **CLI Interface**: Inquirer.js for interactive prompts
 - **Data Sources**: Google Search Console API, BigQuery API
-- **Output**: Table (console), JSON, CSV formats
+- **Output**: Table (console), JSON, CSV formats with smart sorting
 
 ## Architecture
 
@@ -24,13 +25,16 @@ src/
 
 ## Key Files
 
-- **`src/cli/index.js`** (210 lines) - Main CLI entry point with continuous loop and site selection
-- **`src/datasources/searchconsole.js`** (325 lines) - GSC API with direct OAuth2 requests
-- **`src/cli/prompts.js`** (263 lines) - Interactive prompts and menu system
-- **`src/utils/site-manager.js`** (83 lines) - Site selection and storage utilities
-- **`src/utils/auth-helper.js`** (32 lines) - Reusable authentication utilities
-- **`config.js`** (122 lines) - Configuration and presets
-- **`callback.html`** (142 lines) - OAuth2 callback page
+- **`src/cli/index.js`** (228 lines) - Main CLI entry point with continuous loop and site selection
+- **`src/datasources/searchconsole.js`** (334 lines) - GSC API with direct OAuth2 requests and SQLite storage
+- **`src/cli/prompts.js`** (350 lines) - Interactive prompts, menu system, and sorting selection
+- **`src/cli/renderers.js`** (162 lines) - Output rendering with smart sorting and number formatting
+- **`src/utils/site-manager.js`** (111 lines) - Site selection and SQLite storage utilities
+- **`src/utils/auth-helper.js`** (33 lines) - Reusable authentication utilities
+- **`src/utils/database.js`** (114 lines) - SQLite database operations for user data
+- **`config.js`** (125 lines) - Configuration, presets, and user settings
+- **`callback.html`** (143 lines) - OAuth2 callback page
+- **`gsc_auth.db`** - SQLite database for user authentication and site data
 
 ## OAuth2 Authentication Flow
 
@@ -193,6 +197,8 @@ export async function ensureAuthentication(cfg) {
 
 **Detailed Implementation**: See [context-auth.md](./context-auth.md) for complete authentication system details.
 
+**Smart Sorting System**: See [context-sorting.md](./context-sorting.md) for complete sorting system details.
+
 ## Configuration
 
 Environment variables in `.env` (now optional with site selection):
@@ -212,25 +218,67 @@ OAuth2 credentials file structure:
 }
 ```
 
+## Smart Sorting System
+
+Interactive sorting selection with real-time feedback and organized UX:
+
+### Sorting Interface
+```javascript
+// Single-screen multiselect with organized options
+Select columns to sort by (order of selection = primary sorting, secondary sorting):
+❯ ◯ No Sorting
+  ◯  
+  ◯ ASC: name
+  ◯ ASC: age  
+  ◯ ASC: score
+  ◯  
+  ◯ DSC: name
+  ◯ DSC: age
+  ◯ DSC: score
+```
+
+### Real-Time Feedback
+```javascript
+// Shows current sorting with visual indicators
+📊 Sorting applied: Primary: age ↓ (descending), Secondary: score ↑ (ascending)
+```
+
+### Key Features
+- **Selection Order Tracking**: First selected = primary, second = secondary, etc.
+- **Visual Indicators**: Arrows (↑↓) and emojis (📊) for clear feedback
+- **Duplicate Prevention**: Cannot select both ASC and DSC versions of same column
+- **Organized Layout**: Clean separators between ASC and DSC sections
+- **Smart Validation**: Prevents invalid combinations
+
 ## Output Formats
 
-- **Table**: Console-formatted tables with chalk styling
-- **JSON**: Structured data export
-- **CSV**: Spreadsheet-compatible format
+- **Table**: Console-formatted tables with chalk styling and 3-decimal formatting
+- **JSON**: Structured data export with sorting applied
+- **CSV**: Spreadsheet-compatible format with sorting applied
 - **File Export**: Optional file saving with timestamps
 
 ## Recent Updates
 
-- ✅ **OAuth2 Authentication** - Browser-based consent flow
-- ✅ **Token Management** - Automatic token refresh and storage
-- ✅ **Direct API Calls** - Bypassed Google APIs client library issues
-- ✅ **Interactive Menu** - Enhanced CLI with authentication options
-- ✅ **Error Handling** - Comprehensive OAuth2 error management
-- ✅ **Smart Site Selection** - Interactive site selection with persistent memory
+### Database Migration (v2.0)
+- ✅ **SQLite Database** - Migrated from JSON files to SQLite for scalable user data storage
+- ✅ **User Isolation** - Each user's authentication and site data stored separately by userId
+- ✅ **Database Operations** - OAuth2 tokens and site selections stored in `gsc_auth.db`
+- ✅ **Scalable Architecture** - Ready for multi-user applications
+
+### Enhanced Sorting System (v2.1)
+- ✅ **Smart Sorting UX** - Single-screen multiselect with organized ASC/DSC options
+- ✅ **Selection Order Tracking** - First selected = primary, second = secondary, etc.
+- ✅ **Real-Time Feedback** - Shows current sorting with visual indicators (↑↓)
+- ✅ **Duplicate Prevention** - Cannot select both ASC and DSC versions of same column
+- ✅ **Number Formatting** - Table values formatted to 3 decimal places for readability
+
+### Core Features
+- ✅ **OAuth2 Authentication** - Browser-based consent flow with SQLite token storage
+- ✅ **Interactive Menu** - Enhanced CLI with authentication and sorting options
+- ✅ **Smart Site Selection** - Interactive site selection with SQLite memory
 - ✅ **Continuous CLI Loop** - Returns to main menu after each action
-- ✅ **Exit Option** - Proper CLI termination with user-friendly goodbye
-- ✅ **Authentication Helper** - Reusable authentication utilities for consistency
-- ✅ **Direct OAuth2 Queries** - Query execution uses direct requests like working functions
+- ✅ **Direct API Calls** - Bypassed Google APIs client library issues
+- ✅ **Flexible Output** - Table, JSON, CSV with smart sorting and formatting
 
 ## Development
 
@@ -245,7 +293,9 @@ npm run format      # Prettier
 
 - `@googleapis/searchconsole` - Google Search Console API
 - `google-auth-library` - OAuth2 authentication
-- `inquirer` - CLI prompts
-- `chalk` - Console styling
+- `better-sqlite3` - SQLite database for user data storage
+- `inquirer` - CLI prompts and interactive interfaces
+- `chalk` - Console styling and colors
 - `ora` - Loading spinners
 - `open` - Browser opening
+- `csv-stringify` - CSV output formatting

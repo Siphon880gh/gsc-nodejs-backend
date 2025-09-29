@@ -2,7 +2,7 @@
 
 ## Overview
 
-Comprehensive OAuth2 authentication system with direct API requests that bypasses Google APIs client library issues. Uses consistent authentication patterns across all CLI functions.
+Comprehensive OAuth2 authentication system with SQLite database storage for scalable user data management. Uses direct API requests that bypass Google APIs client library issues and provides user-isolated authentication with consistent patterns across all CLI functions.
 
 ## Authentication Helper (`src/utils/auth-helper.js` - 32 lines)
 
