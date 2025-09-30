@@ -1,4 +1,5 @@
 import chalk from "chalk";
+import inquirer from "inquirer";
 import { getSelectedSite, getVerifiedSites, hasValidSiteSelection } from "../utils/site-manager.js";
 
 export async function buildPrompts(cfg) {
@@ -281,12 +282,12 @@ export async function buildSortingPrompts(rows) {
   // Create organized choices with separators
   const choices = [
     { name: 'No Sorting', value: 'none' },
-    { name: '', value: '', disabled: true },
+    new inquirer.Separator(),
     ...availableColumns.map(column => ({
       name: `ASC: ${column}`,
       value: { column, direction: 'asc' }
     })),
-    { name: '', value: '', disabled: true },
+    new inquirer.Separator(),
     ...availableColumns.map(column => ({
       name: `DSC: ${column}`,
       value: { column, direction: 'desc' }

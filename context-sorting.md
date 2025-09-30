@@ -36,12 +36,12 @@ Select columns to sort by (order of selection = primary sorting, secondary sorti
 ```javascript
 const choices = [
   { name: 'No Sorting', value: 'none' },
-  { name: '', value: '', disabled: true }, // Separator
+  new inquirer.Separator(),
   ...availableColumns.map(column => ({
     name: `ASC: ${column}`,
     value: { column, direction: 'asc' }
   })),
-  { name: '', value: '', disabled: true }, // Separator
+  new inquirer.Separator(),
   ...availableColumns.map(column => ({
     name: `DSC: ${column}`,
     value: { column, direction: 'desc' }
