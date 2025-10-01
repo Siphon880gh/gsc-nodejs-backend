@@ -38,13 +38,13 @@ The application now supports both CLI and REST API interfaces:
 ## Key Files
 
 ### CLI Interface
-- **`src/cli/index.js`** (248 lines) - Main CLI entry point with pagination and enhanced UX
+- **`src/cli/index.js`** (253 lines) - Main CLI entry point with pagination and enhanced UX
 - **`src/cli/prompts.js`** (354 lines) - Interactive prompts with advanced sorting and column selection
-- **`src/cli/renderers.js`** (212 lines) - Output rendering with pagination, smart sorting and number formatting
+- **`src/cli/renderers.js`** (509 lines) - Output rendering with pagination, smart sorting, number formatting, and interactive filter system
 
 ### API Server
 - **`src/api/server.js`** (66 lines) - Main API server with JWT authentication
-- **`src/api/jwt-routes.js`** (710 lines) - JWT authentication routes and middleware
+- **`src/api/jwt-routes.js`** (709 lines) - JWT authentication routes and middleware
 - **`src/api/auth-middleware.js`** (162 lines) - JWT authentication middleware
 
 ### Data Sources & Core
@@ -338,6 +338,21 @@ Select columns to sort by (order of selection = primary sorting, secondary sorti
 - **Organized Layout**: Clean separators between ASC and DSC sections
 - **Smart Validation**: Prevents invalid combinations
 
+## Filter System
+
+Interactive filtering system with real-time filtering capabilities:
+
+### Filter Types
+- **Query Filters (`fq`)**: String-based matching with operators `=`, `*`, `<>`, `<*>`
+- **Compare Filters (`fc`)**: Numeric comparison with operators `>=`, `<=`, `>`, `<`, `=`
+- **Clear Filters (`fx`)**: Remove all active filters
+
+### Filter Features
+- **Real-time Filtering**: Apply filters during pagination
+- **Filter Persistence**: Filters remain active across pages
+- **Interactive Commands**: Use `fq`, `fc`, `fx` commands during pagination
+- **Filter Summary**: Display active filters at top of each view
+
 ## Output Formats
 
 - **Table**: Console-formatted tables with pagination, chalk styling and 3-decimal formatting
@@ -457,6 +472,18 @@ app.post('/api/query/adhoc', authenticateJWT, runAdhocQuery);
 
 - **Standard API**: [API-DOCUMENTATION.md](./API-DOCUMENTATION.md) - User-based routing
 - **JWT API**: [API-DOCUMENTATION-JWT.md](./API-DOCUMENTATION-JWT.md) - JWT authentication
+
+## Known Issues
+
+### SearchAppearance Dimension
+The `searchAppearance` dimension may return 0 rows due to:
+
+1. **Limited Data Availability**: The dimension may only have data for specific time periods or site types
+2. **API Requirements**: Some dimensions require specific site configurations or permissions
+3. **Data Processing Delays**: Google Search Console data may take time to populate for certain dimensions
+4. **Site Type Limitations**: The dimension may not be available for all site types
+
+**Workaround**: Try using other dimensions like `device`, `country`, or `query` which typically have more consistent data availability.
 
 ## Recent Updates
 

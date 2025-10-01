@@ -9,7 +9,7 @@ Complete REST API implementation providing all CLI functionality as HTTP endpoin
 The application provides a single API implementation with JWT authentication:
 
 1. **Main API** (`src/api/server.js` - 66 lines) - Express server with JWT authentication
-2. **JWT Routes** (`src/api/jwt-routes.js` - 710 lines) - JWT authentication routes and middleware
+2. **JWT Routes** (`src/api/jwt-routes.js` - 709 lines) - JWT authentication routes and middleware
 
 ### Server Implementation
 
@@ -30,7 +30,7 @@ app.get('/health', (req, res) => {
 
 ## JWT Authentication System
 
-### JWT Routes (`src/api/jwt-routes.js` - 710 lines)
+### JWT Routes (`src/api/jwt-routes.js` - 709 lines)
 
 Comprehensive JWT authentication system with secure token management:
 
