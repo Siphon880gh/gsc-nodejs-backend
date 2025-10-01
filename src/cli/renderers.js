@@ -357,75 +357,60 @@ async function handleQueryFilter(originalRows) {
     choices: availableFields
   }]);
   
-  console.log(`\nEnter expression:
-  =value  → exact match (case-insensitive)
-  *value  → wildcard match (contains anywhere)
-  <>value → not equal exact
-  <*>value → not equal wildcard
+  const operatorAnswer = await inquirer.prompt([{
+    type: 'list',
+    name: 'operator',
+    message: 'Choose matching type:',
+    choices: [
+      { name: '= (exact match)', value: '=' },
+      { name: '* (contains anywhere)', value: '*' },
+      { name: '<> (not equal exact)', value: '<>' },
+      { name: '<*> (not contains)', value: '<*>' }
+    ]
+  }]);
   
-Examples: =Acme, *los angeles, <>Closed, <*>test
+  console.log(`\nEnter value to search for:
 Enter 'q' to cancel:`);
   
-  const expressionAnswer = await inquirer.prompt([{
+  const valueAnswer = await inquirer.prompt([{
     type: 'input',
-    name: 'expression',
+    name: 'value',
     message: '',
     validate: (input) => {
       if (input.toLowerCase().trim() === 'q') {
         return true; // Allow 'q' to cancel
       }
       if (!input.trim()) {
-        return 'Expression cannot be empty';
+        return 'Value cannot be empty';
       }
-      // Check for valid operators: =, *, <>, <*>
-      if (input.startsWith('=') || input.startsWith('*') || input.startsWith('<>') || input.startsWith('<*>')) {
-        return true;
-      }
-      return 'Invalid expression format. Use =value, *value, <>value, or <*>value';
+      return true;
     }
   }]);
   
   // Check if user wants to cancel
-  if (expressionAnswer.expression.toLowerCase().trim() === 'q') {
+  if (valueAnswer.value.toLowerCase().trim() === 'q') {
     console.log(chalk.blue('Filter cancelled.'));
     return;
   }
   
-  const expression = expressionAnswer.expression;
-  let operator, value;
+  const operator = operatorAnswer.operator;
+  const value = valueAnswer.value;
   
-  if (expression.startsWith('<*>')) {
-    operator = '<*>';
-    value = expression.substring(3);
-  } else if (expression.startsWith('<>')) {
-    operator = '<>';
-    value = expression.substring(2);
-  } else if (expression.startsWith('=')) {
-    operator = '=';
-    value = expression.substring(1);
-  } else if (expression.startsWith('*')) {
-    operator = '*';
-    value = expression.substring(1);
+  // Apply the filter to the original dataset to test
+  const filteredRows = applyQueryFilter(originalRows, fieldAnswer.field, operator, value);
+  
+  if (filteredRows.length === 0) {
+    console.log(chalk.yellow('Warning: Filter resulted in zero results, but filter will be kept.'));
+  } else {
+    console.log(chalk.green(`Filter applied: ${filteredRows.length} rows match.`));
   }
   
-  if (operator && value !== undefined) {
-    
-    // Apply the filter to the original dataset to test
-    const filteredRows = applyQueryFilter(originalRows, fieldAnswer.field, operator, value);
-    
-    if (filteredRows.length === 0) {
-      console.log(chalk.yellow('Warning: Filter resulted in zero results, but filter will be kept.'));
-    } else {
-      console.log(chalk.green(`Filter applied: ${filteredRows.length} rows match.`));
-    }
-    
-    // Add to current filters
-    currentFilters.queryFilters.push({
-      field: fieldAnswer.field,
-      operator: operator,
-      value: value
-    });
-  }
+  // Add to current filters
+  currentFilters.queryFilters.push({
+    field: fieldAnswer.field,
+    operator: operator,
+    value: value
+  });
 }
 
 async function handleCompareFilter(originalRows) {
@@ -446,8 +431,14 @@ async function handleCompareFilter(originalRows) {
   const operatorAnswer = await inquirer.prompt([{
     type: 'list',
     name: 'operator',
-    message: 'Choose operator:',
-    choices: ['>=', '<=', '>', '<', '=']
+    message: 'Choose comparison operator:',
+    choices: [
+      { name: '>= (greater than or equal)', value: '>=' },
+      { name: '<= (less than or equal)', value: '<=' },
+      { name: '> (greater than)', value: '>' },
+      { name: '< (less than)', value: '<' },
+      { name: '= (equal to)', value: '=' }
+    ]
   }]);
   
   console.log(`\nEnter number to compare against:
